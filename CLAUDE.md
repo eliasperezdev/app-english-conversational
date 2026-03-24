@@ -21,7 +21,7 @@ Hay un tercer módulo de guías (`/guides`) planificado para fase 2, pero **no e
 - **Web Speech API** — STT (reconocimiento de voz) y TTS (text-to-speech), nativo del browser, sin APIs externas
 - **TypeScript** en todo el proyecto
 
-LLM a usar: definir en `.env.local` con `OPENAI_API_KEY` o equivalente. El modelo se configura en `/lib/llm.ts`.
+LLM a usar: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. El modelo se configura en `/lib/llm.ts`.
 
 ---
 
@@ -228,8 +228,12 @@ export const topics = {
 ## Variables de entorno
 
 ```
-OPENAI_API_KEY=           # o el proveedor que se use
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
+LLM_MAX_RETRIES=3
 ```
+
+Provider: `@ai-sdk/google`. La API key va en `.env.local` (nunca en el repo).
 
 ---
 

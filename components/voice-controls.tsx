@@ -1,8 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import { Mic, MicOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Mic } from "lucide-react"
 
 interface Props {
   isListening: boolean
@@ -17,7 +16,6 @@ export function VoiceControls({ isListening, onToggle, onTranscript, disabled }:
   const handleClick = () => {
     if (typeof window === "undefined") return
 
-    // Stop if already listening
     if (isListening) {
       recognitionRef.current?.abort()
       recognitionRef.current = null
@@ -25,7 +23,6 @@ export function VoiceControls({ isListening, onToggle, onTranscript, disabled }:
       return
     }
 
-    // Create AND start in the same user gesture — required on iOS/Android
     const SR =
       (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition })
         .webkitSpeechRecognition ?? window.SpeechRecognition
@@ -65,15 +62,18 @@ export function VoiceControls({ isListening, onToggle, onTranscript, disabled }:
   }
 
   return (
-    <Button
+    <button
       type="button"
-      variant={isListening ? "destructive" : "outline"}
-      size="icon"
       onClick={handleClick}
       disabled={disabled}
       aria-label={isListening ? "Stop listening" : "Start voice input"}
+      className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${
+        isListening
+          ? "bg-[#C41A1A] animate-pulse"
+          : "bg-[#C41A1A] hover:bg-[#a81616]"
+      }`}
     >
-      {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-    </Button>
+      <Mic className="w-4 h-4 text-white" />
+    </button>
   )
 }

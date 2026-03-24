@@ -1,64 +1,89 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ChevronRight } from "lucide-react"
 import { levels } from "@/lib/levels"
 import { topics } from "@/lib/topics"
 
 export default function PracticePage() {
   const levelKeys = Object.keys(levels)
   const topicKeys = Object.keys(topics)
+  const [selectedLevel, setSelectedLevel] = useState(levelKeys[2]) // default B1
 
   return (
-    <main className="min-h-screen p-6 max-w-2xl mx-auto">
-      <header className="flex items-center gap-3 mb-8">
-        <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <h1 className="text-lg font-semibold">Practice</h1>
+    <main className="min-h-screen bg-[#0e0e0f] flex flex-col">
+      {/* Topbar */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2e] bg-[#161618]">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-[#888] hover:text-[#d0d0d5] transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <span className="px-2.5 py-0.5 rounded-full bg-[#C41A1A] text-white text-xs font-semibold uppercase tracking-wide">
+            Practice
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-[#C41A1A]" />
+          <span className="text-[13px] text-[#888]">live</span>
+        </div>
       </header>
 
-      <section className="mb-8">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
-          Choose your level
-        </h2>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {levelKeys.map((key) => (
-            <div
-              key={key}
-              className="border rounded-xl p-3 text-center"
-            >
-              <div className="text-base font-bold">{key}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{levels[key].label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="flex-1 px-4 py-8 max-w-2xl mx-auto w-full">
+        {/* Level selector */}
+        <section className="mb-10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#888] mb-4">
+            Your level
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {levelKeys.map((key) => {
+              const active = key === selectedLevel
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedLevel(key)}
+                  className={`flex flex-col items-center px-5 py-3 rounded-xl border transition-colors ${
+                    active
+                      ? "bg-[#C41A1A] border-[#C41A1A] text-white"
+                      : "bg-[#161618] border-[#2a2a2e] text-[#d0d0d5] hover:border-[#C41A1A]"
+                  }`}
+                >
+                  <span className="text-base font-bold">{key}</span>
+                  <span className={`text-[11px] mt-0.5 ${active ? "text-white/70" : "text-[#888]"}`}>
+                    {levels[key].label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
 
-      <section>
-        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
-          Choose a topic
-        </h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {levelKeys.map((level) =>
-            topicKeys.map((topic) => (
+        {/* Topic cards */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#888] mb-4">
+            Choose a topic
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {topicKeys.map((topicKey) => (
               <Link
-                key={`${level}-${topic}`}
-                href={`/practice/${level}/${topic}`}
-                className="flex items-center justify-between border rounded-xl px-4 py-3 hover:bg-muted transition-colors"
+                key={topicKey}
+                href={`/practice/${selectedLevel.toLowerCase()}/${topicKey}`}
+                className="group flex items-center justify-between bg-[#161618] border border-[#2a2a2e] rounded-xl px-4 py-4 hover:border-[#C41A1A] transition-colors"
               >
-                <div>
-                  <span className="text-sm font-medium">{topics[topic].label}</span>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                    {topics[topic].description}
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-white">
+                    {topics[topicKey].label}
+                  </p>
+                  <p className="text-[13px] text-[#888] mt-0.5 line-clamp-1">
+                    {topics[topicKey].description}
                   </p>
                 </div>
-                <span className="text-xs font-mono text-muted-foreground ml-3 shrink-0">
-                  {level}
-                </span>
+                <ChevronRight className="h-4 w-4 text-[#888] group-hover:text-[#C41A1A] shrink-0 ml-3 transition-colors" />
               </Link>
-            ))
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
   )
 }

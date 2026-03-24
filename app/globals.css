@@ -117,14 +117,29 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes chat-typing {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #C41A1A;
+  animation: chat-typing 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
+  html, body {
+    background-color: #0e0e0f;
+    color: #d0d0d5;
     @apply font-sans;
   }
 }

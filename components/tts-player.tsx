@@ -5,28 +5,34 @@ import { Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { calcularDelay } from "@/lib/tts"
 
+interface TtsMessage {
+  text: string
+  id: number
+}
+
 interface Props {
   enabled: boolean
   onToggle: () => void
   isSpeaking: boolean
   onSpeakingChange: (speaking: boolean) => void
-  textToSpeak: string | null
+  textToSpeak: TtsMessage | null
 }
 
 export function TtsPlayer({ enabled, onToggle, isSpeaking, onSpeakingChange, textToSpeak }: Props) {
-  const spokenRef = useRef<string | null>(null)
+  const lastIdRef = useRef(-1)
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    if (!enabled || !textToSpeak || textToSpeak === spokenRef.current) return
+    if (!enabled || !textToSpeak) return
+    if (textToSpeak.id === lastIdRef.current) return
 
-    spokenRef.current = textToSpeak
-    const delay = calcularDelay(textToSpeak)
+    lastIdRef.current = textToSpeak.id
+    const delay = calcularDelay(textToSpeak.text)
 
     const timer = setTimeout(() => {
       window.speechSynthesis.cancel()
 
-      const utterance = new SpeechSynthesisUtterance(textToSpeak)
+      const utterance = new SpeechSynthesisUtterance(textToSpeak.text)
       utterance.lang = "en-US"
       utterance.rate = 0.95
 
@@ -40,7 +46,6 @@ export function TtsPlayer({ enabled, onToggle, isSpeaking, onSpeakingChange, tex
     return () => clearTimeout(timer)
   }, [textToSpeak, enabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stop speech when TTS is disabled mid-sentence
   useEffect(() => {
     if (!enabled && typeof window !== "undefined") {
       window.speechSynthesis.cancel()
@@ -48,16 +53,12 @@ export function TtsPlayer({ enabled, onToggle, isSpeaking, onSpeakingChange, tex
     }
   }, [enabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleToggle = () => {
-    onToggle()
-  }
-
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon"
-      onClick={handleToggle}
+      onClick={onToggle}
       aria-label={enabled ? "Disable voice output" : "Enable voice output"}
     >
       {enabled ? (

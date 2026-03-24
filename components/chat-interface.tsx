@@ -32,7 +32,8 @@ export function ChatInterface({ mode, level, topic }: Props) {
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
-  const [pendingTts, setPendingTts] = useState<string | null>(null)
+  const [pendingTts, setPendingTts] = useState<{ text: string; id: number } | null>(null)
+  const ttsIdRef = useRef(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const audioUnlockedRef = useRef(false)
 
@@ -50,9 +51,9 @@ export function ChatInterface({ mode, level, topic }: Props) {
   useEffect(() => {
     if (status === "ready") {
       const text = getTextFromLastAssistantMessage(messages)
-      if (text) setPendingTts(text)
+      if (text) setPendingTts({ text, id: ++ttsIdRef.current })
     }
-  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [status, messages])
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {

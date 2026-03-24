@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, FormEvent } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
+import type { TextUIPart } from "ai"
 import { MessageBubble } from "@/components/message-bubble"
 import { VoiceControls } from "@/components/voice-controls"
 import { TtsPlayer } from "@/components/tts-player"
@@ -15,11 +16,23 @@ interface Props {
   topic?: string
 }
 
+function getTextFromLastAssistantMessage(
+  messages: ReturnType<typeof useChat>["messages"]
+): string | null {
+  const last = [...messages].reverse().find((m) => m.role === "assistant")
+  if (!last) return null
+  return last.parts
+    .filter((p): p is TextUIPart => p.type === "text")
+    .map((p) => p.text)
+    .join("") || null
+}
+
 export function ChatInterface({ mode, level, topic }: Props) {
   const [input, setInput] = useState("")
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [pendingTts, setPendingTts] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { messages, sendMessage, status } = useChat({
@@ -30,6 +43,14 @@ export function ChatInterface({ mode, level, topic }: Props) {
   })
 
   const isLoading = status === "streaming" || status === "submitted"
+
+  // When streaming finishes, queue last assistant message for TTS
+  useEffect(() => {
+    if (status === "ready") {
+      const text = getTextFromLastAssistantMessage(messages)
+      if (text) setPendingTts(text)
+    }
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -42,6 +63,11 @@ export function ChatInterface({ mode, level, topic }: Props) {
     if (!text || isLoading) return
     setInput("")
     await sendMessage({ text })
+  }
+
+  const handleTranscript = (text: string) => {
+    setInput(text)
+    setIsListening(false)
   }
 
   return (
@@ -76,6 +102,7 @@ export function ChatInterface({ mode, level, topic }: Props) {
         <VoiceControls
           isListening={isListening}
           onToggle={() => setIsListening((v) => !v)}
+          onTranscript={handleTranscript}
           disabled={isLoading}
         />
         <input
@@ -89,6 +116,8 @@ export function ChatInterface({ mode, level, topic }: Props) {
           enabled={ttsEnabled}
           onToggle={() => setTtsEnabled((v) => !v)}
           isSpeaking={isSpeaking}
+          onSpeakingChange={setIsSpeaking}
+          textToSpeak={pendingTts}
         />
         <Button type="submit" size="icon" disabled={!input.trim() || isLoading}>
           <SendHorizonal className="h-4 w-4" />

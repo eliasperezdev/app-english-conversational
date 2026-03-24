@@ -34,6 +34,7 @@ export function ChatInterface({ mode, level, topic }: Props) {
   const [isListening, setIsListening] = useState(false)
   const [pendingTts, setPendingTts] = useState<{ text: string; id: number } | null>(null)
   const ttsIdRef = useRef(0)
+  const lastQueuedMsgIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const audioUnlockedRef = useRef(false)
 
@@ -47,12 +48,16 @@ export function ChatInterface({ mode, level, topic }: Props) {
 
   const isLoading = status === "streaming" || status === "submitted"
 
-  // When streaming finishes, queue last assistant message for TTS
+  // When streaming finishes, queue last assistant message for TTS (once per message)
   useEffect(() => {
-    if (status === "ready") {
-      const text = getTextFromLastAssistantMessage(messages)
-      if (text) setPendingTts({ text, id: ++ttsIdRef.current })
-    }
+    if (status !== "ready") return
+    const last = [...messages].reverse().find((m) => m.role === "assistant")
+    if (!last) return
+    if (last.id === lastQueuedMsgIdRef.current) return
+    const text = getTextFromLastAssistantMessage(messages)
+    if (!text) return
+    lastQueuedMsgIdRef.current = last.id
+    setPendingTts({ text, id: ++ttsIdRef.current })
   }, [status, messages])
 
   // Auto-scroll to bottom on new messages

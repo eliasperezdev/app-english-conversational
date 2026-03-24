@@ -1,7 +1,7 @@
 export function calcularDelay(text: string): number {
   const words = text.split(" ").length
-  const wordsPerMinute = 130
-  const baseDelay = (words / wordsPerMinute) * 60 * 1000
-  const jitter = Math.random() * 800 - 400 // ±400ms
-  return Math.max(300, baseDelay + jitter)  // mínimo 300ms
+  // Short pause proportional to text length, capped at 1.5s
+  const base = Math.min(1500, words * 30)
+  const jitter = Math.random() * 200 - 100 // ±100ms
+  return Math.max(300, base + jitter)
 }

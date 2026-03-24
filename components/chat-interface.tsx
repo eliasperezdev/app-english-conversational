@@ -34,6 +34,7 @@ export function ChatInterface({ mode, level, topic }: Props) {
   const [isListening, setIsListening] = useState(false)
   const [pendingTts, setPendingTts] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const audioUnlockedRef = useRef(false)
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat", body: { mode, level, topic } }),
@@ -58,15 +59,26 @@ export function ChatInterface({ mode, level, topic }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  const unlockAudio = () => {
+    if (audioUnlockedRef.current || typeof window === "undefined") return
+    const silent = new SpeechSynthesisUtterance("")
+    silent.volume = 0
+    window.speechSynthesis.speak(silent)
+    window.speechSynthesis.cancel()
+    audioUnlockedRef.current = true
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const text = input.trim()
     if (!text || isLoading) return
+    unlockAudio()
     setInput("")
     await sendMessage({ text })
   }
 
   const handleTranscript = (text: string) => {
+    unlockAudio()
     setInput(text)
     setIsListening(false)
   }

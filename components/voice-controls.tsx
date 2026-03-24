@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { Mic, MicOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -12,14 +12,28 @@ interface Props {
 }
 
 export function VoiceControls({ isListening, onToggle, onTranscript, disabled }: Props) {
-  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
-  useEffect(() => {
+  const handleClick = () => {
     if (typeof window === "undefined") return
+
+    // Stop if already listening
+    if (isListening) {
+      recognitionRef.current?.abort()
+      recognitionRef.current = null
+      onToggle()
+      return
+    }
+
+    // Create AND start in the same user gesture — required on iOS/Android
     const SR =
-      (window as typeof window & { webkitSpeechRecognition?: typeof window.SpeechRecognition })
+      (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition })
         .webkitSpeechRecognition ?? window.SpeechRecognition
-    if (!SR) return
+
+    if (!SR) {
+      alert("Voice input is not supported in this browser.")
+      return
+    }
 
     const recognition = new SR()
     recognition.lang = "en-US"
@@ -32,28 +46,30 @@ export function VoiceControls({ isListening, onToggle, onTranscript, disabled }:
     }
 
     recognition.onend = () => {
+      recognitionRef.current = null
+      if (isListening) onToggle()
+    }
+
+    recognition.onerror = () => {
+      recognitionRef.current = null
       if (isListening) onToggle()
     }
 
     recognitionRef.current = recognition
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const recognition = recognitionRef.current
-    if (!recognition) return
-    if (isListening) {
+    try {
       recognition.start()
-    } else {
-      recognition.abort()
+      onToggle()
+    } catch {
+      recognitionRef.current = null
     }
-  }, [isListening])
+  }
 
   return (
     <Button
       type="button"
       variant={isListening ? "destructive" : "outline"}
       size="icon"
-      onClick={onToggle}
+      onClick={handleClick}
       disabled={disabled}
       aria-label={isListening ? "Stop listening" : "Start voice input"}
     >

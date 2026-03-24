@@ -15,6 +15,7 @@ interface Props {
 
 export function TtsPlayer({ enabled, onToggle, isSpeaking, onSpeakingChange, textToSpeak }: Props) {
   const spokenRef = useRef<string | null>(null)
+  const unlockedRef = useRef(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -48,12 +49,25 @@ export function TtsPlayer({ enabled, onToggle, isSpeaking, onSpeakingChange, tex
     }
   }, [enabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleToggle = () => {
+    // iOS requires the first speak() to happen during a user gesture.
+    // Unlock the audio context here so future speak() calls (even in setTimeout) work.
+    if (typeof window !== "undefined" && !unlockedRef.current) {
+      const silent = new SpeechSynthesisUtterance("")
+      silent.volume = 0
+      window.speechSynthesis.speak(silent)
+      window.speechSynthesis.cancel()
+      unlockedRef.current = true
+    }
+    onToggle()
+  }
+
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon"
-      onClick={onToggle}
+      onClick={handleToggle}
       aria-label={enabled ? "Disable voice output" : "Enable voice output"}
     >
       {enabled ? (

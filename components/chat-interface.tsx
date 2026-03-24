@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState, FormEvent } from "react"
+import { useRef, useEffect, useState, useMemo, FormEvent } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import type { TextUIPart } from "ai"
@@ -35,12 +35,13 @@ export function ChatInterface({ mode, level, topic }: Props) {
   const [pendingTts, setPendingTts] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: { mode, level, topic },
-    }),
-  })
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat", body: { mode, level, topic } }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+
+  const { messages, sendMessage, status } = useChat({ transport })
 
   const isLoading = status === "streaming" || status === "submitted"
 
@@ -97,7 +98,7 @@ export function ChatInterface({ mode, level, topic }: Props) {
       {/* Input area */}
       <form
         onSubmit={handleSubmit}
-        className="border-t p-3 flex items-center gap-2"
+        className="border-t p-3 pb-[max(12px,env(safe-area-inset-bottom))] flex items-center gap-2 shrink-0"
       >
         <VoiceControls
           isListening={isListening}
@@ -110,6 +111,7 @@ export function ChatInterface({ mode, level, topic }: Props) {
           placeholder="Type or speak in English..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onFocus={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
           disabled={isLoading}
         />
         <TtsPlayer

@@ -113,44 +113,43 @@ export function ChatInterface({ mode, level, topic }: Props) {
     await sendMessage({ text: phrase })
   }
 
-  // Suppress unused warning — levelConfig is used for future extensibility
   void levelConfig
 
   return (
     <div className="flex flex-col h-dvh bg-[#0e0e0f] text-[#d0d0d5]">
       {/* Topbar */}
-      <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[#2a2a2e] bg-[#161618]">
+      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-[#2a2a2e] bg-[#161618]">
         <div className="flex items-center gap-3">
           <Link
             href={backHref}
             className="text-[#888] hover:text-[#d0d0d5] transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Link>
-          <span className="px-2.5 py-0.5 rounded-full bg-[#C41A1A] text-white text-xs font-semibold uppercase tracking-wide">
+          <span className="px-2.5 py-0.5 rounded-full bg-[#C41A1A] text-white text-xs md:text-sm font-semibold uppercase tracking-wide">
             {badgeLabel}
           </span>
           {level && (
-            <span className="text-xs text-[#888] font-medium">{level}</span>
+            <span className="text-xs md:text-sm text-[#888] font-medium">{level}</span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-[#C41A1A]" />
-          <span className="text-xs text-[#888]">live</span>
+          <span className="text-xs md:text-sm text-[#888]">live</span>
         </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 space-y-4 md:space-y-5">
         {/* Session pill */}
         <div className="flex justify-center">
-          <span className="px-3 py-1 rounded-full bg-[#161618] border border-[#2a2a2e] text-[13px] text-[#888]">
+          <span className="px-3 py-1 rounded-full bg-[#161618] border border-[#2a2a2e] text-[13px] md:text-[15px] text-[#888]">
             {sessionLabel}
           </span>
         </div>
 
         {messages.length === 0 && (
-          <p className="text-center text-[#888] text-sm pt-4">
+          <p className="text-center text-[#888] text-sm md:text-base pt-4">
             {mode === "free"
               ? "Say something to start the conversation..."
               : `Practice ${topicConfig?.label ?? topic} at ${level} level`}
@@ -164,8 +163,8 @@ export function ChatInterface({ mode, level, topic }: Props) {
         {/* Typing indicator */}
         {isLoading && (
           <div className="flex items-end gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#C41A1A] flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">E</span>
+            <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-[#C41A1A] flex items-center justify-center shrink-0">
+              <span className="text-white text-xs md:text-sm font-bold">E</span>
             </div>
             <div className="bg-[#161618] border border-[#2a2a2e] rounded-2xl rounded-bl-sm px-4 py-3">
               <div className="flex gap-1.5 items-center">
@@ -181,10 +180,10 @@ export function ChatInterface({ mode, level, topic }: Props) {
       </div>
 
       {/* Input bar */}
-      <div className="shrink-0 border-t border-[#2a2a2e] bg-[#161618] px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      <div className="shrink-0 border-t border-[#2a2a2e] bg-[#161618] px-4 md:px-6 pt-3 md:pt-4 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2 md:gap-3">
           <input
-            className="flex-1 bg-[#0e0e0f] border border-[#2a2a2e] rounded-full px-4 py-2 text-sm text-[#d0d0d5] placeholder:text-[#888] outline-none focus:border-[#C41A1A] transition-colors disabled:opacity-50"
+            className="flex-1 bg-[#0e0e0f] border border-[#2a2a2e] rounded-full px-4 md:px-5 py-2 md:py-3 text-sm md:text-base text-[#d0d0d5] placeholder:text-[#888] outline-none focus:border-[#C41A1A] transition-colors disabled:opacity-50"
             placeholder="Type or speak in English..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -195,9 +194,9 @@ export function ChatInterface({ mode, level, topic }: Props) {
             <button
               type="submit"
               disabled={isLoading}
-              className="shrink-0 w-9 h-9 rounded-full bg-[#C41A1A] flex items-center justify-center text-white hover:bg-[#a81616] transition-colors disabled:opacity-50"
+              className="shrink-0 w-9 h-9 md:w-11 md:h-11 rounded-full bg-[#C41A1A] flex items-center justify-center text-white hover:bg-[#a81616] transition-colors disabled:opacity-50"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
           )}
           <VoiceControls
@@ -210,14 +209,14 @@ export function ChatInterface({ mode, level, topic }: Props) {
 
         {/* Hint chips */}
         {hints.length > 0 && (
-          <div className="flex gap-2 mt-2 flex-wrap">
+          <div className="flex gap-2 mt-2 md:mt-3 flex-wrap">
             {hints.map((phrase) => (
               <button
                 key={phrase}
                 type="button"
                 onClick={() => handleHintClick(phrase)}
                 disabled={isLoading}
-                className="px-3 py-1 rounded-full bg-[#0e0e0f] border border-[#2a2a2e] text-[13px] text-[#888] hover:border-[#C41A1A] hover:text-[#C41A1A] transition-colors disabled:opacity-40 cursor-pointer"
+                className="px-3 md:px-4 py-1 md:py-1.5 rounded-full bg-[#0e0e0f] border border-[#2a2a2e] text-[13px] md:text-[15px] text-[#888] hover:border-[#C41A1A] hover:text-[#C41A1A] transition-colors disabled:opacity-40 cursor-pointer"
               >
                 {phrase}
               </button>

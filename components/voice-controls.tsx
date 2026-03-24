@@ -67,13 +67,13 @@ export function VoiceControls({ isListening, onToggle, onTranscript, disabled }:
       onClick={handleClick}
       disabled={disabled}
       aria-label={isListening ? "Stop listening" : "Start voice input"}
-      className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${
+      className={`shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${
         isListening
           ? "bg-[#C41A1A] animate-pulse"
           : "bg-[#C41A1A] hover:bg-[#a81616]"
       }`}
     >
-      <Mic className="w-4 h-4 text-white" />
+      <Mic className="w-4 h-4 md:w-5 md:h-5 text-white" />
     </button>
   )
 }

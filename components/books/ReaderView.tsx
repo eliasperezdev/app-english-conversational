@@ -6,6 +6,7 @@ import type { BookChapter } from '@/lib/types'
 
 interface Props {
   slug: string
+  bookTitle: string
   chapter: BookChapter
   prevChapter: number | null
   nextChapter: number | null
@@ -39,7 +40,7 @@ function findWordIdx(spans: WordSpan[], charIndex: number): number {
   return idx
 }
 
-export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: Props) {
+export default function ReaderView({ slug, bookTitle, chapter, prevChapter, nextChapter }: Props) {
   const [activePara, setActivePara] = useState<number | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<Speed>(1)
@@ -102,7 +103,9 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
       }
     }
 
-    utterance.onerror = () => {
+    utterance.onerror = (event) => {
+      // 'interrupted' and 'canceled' fire when cancel() is called — not real errors
+      if (event.error === 'interrupted' || event.error === 'canceled') return
       clearWordHighlight()
       setIsPlaying(false)
       isPlayingRef.current = false
@@ -243,6 +246,20 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
           )
         })}
       </main>
+
+      {/* Practice conversation button */}
+      {(() => {
+        const subject = chapter.title ?? chapter.heading
+        const prefill = `I just read about ${subject} from ${bookTitle}. Can we talk about it?`
+        return (
+          <Link
+            href={`/chat?prefill=${encodeURIComponent(prefill)}`}
+            className="fixed bottom-[84px] right-5 z-10 flex items-center gap-2 px-4 py-2 rounded-full bg-[#161618] border border-[#2a2a2e] hover:border-[#C41A1A] text-[#888] hover:text-white text-sm transition-colors shadow-lg"
+          >
+            Practice conversation
+          </Link>
+        )
+      })()}
 
       {/* Player bar */}
       <div className="fixed bottom-0 left-0 right-0 z-10 bg-[#111113] border-t border-[#2a2a2e]">

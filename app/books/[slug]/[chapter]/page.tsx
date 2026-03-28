@@ -36,6 +36,7 @@ export default async function ChapterPage({ params }: Props) {
     <div className="min-h-screen bg-[#0e0e0f]">
       <ReaderView
         slug={slug}
+        bookTitle={book.title}
         chapter={chapter}
         prevChapter={prevChapter}
         nextChapter={nextChapter}

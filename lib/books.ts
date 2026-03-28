@@ -38,6 +38,11 @@ export async function getAllBooksMetadata(): Promise<BookMeta[]> {
   return entries.filter((b): b is BookMeta => b !== null)
 }
 
+export async function getBooksByLevel(level: string): Promise<BookMeta[]> {
+  const all = await getAllBooksMetadata()
+  return all.filter((b) => b.level === level)
+}
+
 export async function getChapter(
   slug: string,
   number: number

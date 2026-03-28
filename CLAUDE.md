@@ -4,12 +4,13 @@
 
 Web app para practicar inglés conversacional con IA. El usuario habla o escribe, un LLM responde como tutor, y la respuesta se lee en voz alta con cadencia humana.
 
-Tres módulos activos:
+Cuatro módulos activos:
 - **Chat libre** (`/chat`): conversación abierta, sin restricciones de tema ni nivel
 - **Chat estructurado** (`/practice/[level]/[topic]`): el usuario elige nivel (A1–C2) y tema
 - **Guías** (`/guides`): lecciones estructuradas por nivel con bloques de contenido, ejercicios y práctica de voz
+- **Libros** (`/books`): lectura de textos en inglés con TTS palabra-por-palabra y botón de práctica de conversación
 
-Un cuarto módulo está planificado pero **no ha comenzado**. No crear ni tocar hasta que esté indicado.
+Un quinto módulo está planificado pero **no ha comenzado**. No crear ni tocar hasta que esté indicado.
 
 ---
 
@@ -43,6 +44,12 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
       page.tsx                    → lista de capítulos del nivel
       /[chapter]
         page.tsx                  → página de capítulo con bloques y sticky bar
+  /books
+    page.tsx                      → listado de todos los libros
+    /[slug]
+      page.tsx                    → detalle del libro con lista de capítulos
+      /[chapter]
+        page.tsx                  → reader page (server shell) + botón "Practice conversation"
   /api/chat
     route.ts                      → Route Handler único para chat libre y estructurado
 /components
@@ -73,6 +80,8 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
     Dictation.tsx                 → dictation ("use client")
   /guides
     StickyBar.tsx                 → barra inferior fija ("use client")
+  /books
+    ReaderView.tsx                → lector con TTS palabra-por-palabra ("use client")
 /lib
   types.ts                        → todos los tipos del proyecto (ver sección Tipos)
   guides.ts                       → getLevel(), getChapter(), getAllLevelSlugs(), etc.
@@ -80,6 +89,7 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
   tts.ts                          → calcularDelay(text: string): number
   levels.ts                       → configuración de niveles para el chat
   topics.ts                       → configuración de temas para el chat
+  books.ts                        → getAllBooksMetadata(), getBook(), getBooksByLevel(), getChapter()
 /content
   /guides
     /a1
@@ -93,7 +103,164 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
       vocabulary.ts, grammar.ts, communication.ts, pronunciation.ts
     /b1  ← próximo nivel
     /b2, /c1, /c2  ← futuros
+  /books
+    bulfinch-mythology.ts         → Book (export default)
+    tom-sawyer.ts                 → Book (export default)
 ```
+
+---
+
+## Módulo Libros — arquitectura
+
+### Tipos — `/lib/types.ts`
+
+```ts
+BookChapter   { number, heading, title: string | null, paragraphs: string[] }
+Book          { slug, title, author, level, source, totalChapters, estimatedMinutes, chapters: BookChapter[] }
+```
+
+`level` debe coincidir con un slug de nivel de guías (ej. `'a2'`) para que el libro aparezca en la página del capítulo correspondiente en `/guides`.
+
+### Acceso a datos — `/lib/books.ts`
+
+```ts
+getAllBooksMetadata(): Promise<BookMeta[]>   // Book sin chapters — para listings
+getBook(slug): Promise<Book | undefined>    // Book completo con chapters
+getBooksByLevel(level): Promise<BookMeta[]> // Para mostrar libros en /guides/[level]/[chapter]
+getChapter(slug, number): Promise<BookChapter | undefined>
+```
+
+Usa el mismo patrón de registry que `/lib/guides.ts`:
+
+```ts
+const BOOK_IMPORTS: Record<string, () => Promise<{ default: Book }>> = {
+  'bulfinch-mythology': () => import('@/content/books/bulfinch-mythology'),
+  'tom-sawyer':         () => import('@/content/books/tom-sawyer'),
+}
+```
+
+Cada libro es un dynamic import — bundle separado por libro. Los archivos hacen `export default` del objeto `Book`.
+
+### Archivos de contenido — `/content/books/[slug].ts`
+
+```ts
+import type { Book } from '@/lib/types'
+
+const book: Book = {
+  slug: 'bulfinch-mythology',
+  title: "Bulfinch's Mythology",
+  author: 'Thomas Bulfinch',
+  level: 'b2',
+  source: 'Project Gutenberg',
+  totalChapters: 78,
+  estimatedMinutes: 420,
+  chapters: [
+    {
+      number: 1,
+      heading: 'Chapter I',
+      title: 'The Gods',           // null si no hay subtítulo
+      paragraphs: ['First paragraph text...', 'Second paragraph text...'],
+    },
+    // ...
+  ],
+}
+
+export default book
+```
+
+### Reader — `components/books/ReaderView.tsx`
+
+Componente cliente que maneja TTS con:
+- **Highlight palabra a palabra** via `onboundary` + DOM directo (sin re-renders de React)
+- **Auto-advance** de párrafo al terminar (`onend` → siguiente párrafo)
+- **Velocidades**: 0.75×, 1×, 1.25×, 1.5× — aplicables en caliente
+- **Barra de progreso** proporcional al párrafo activo
+- Click en cualquier párrafo inicia lectura desde ese punto
+
+**Notas críticas de TTS en mobile (Android Chrome):**
+- Llamar `window.speechSynthesis.getVoices()` en `useEffect([], [])` para precargar voces — sin esto la primera reproducción puede fallar en silencio
+- Llamar `window.speechSynthesis.resume()` inmediatamente después de `cancel()` — Android Chrome bug: `cancel()` puede dejar la síntesis en estado pausado, bloqueando el siguiente `speak()`
+- `speak()` debe llamarse **sincrónicamente** dentro del click handler — cualquier `setTimeout` (incluso 0ms) rompe el contexto de user gesture en Chrome mobile
+- Filtrar errores de `onerror`: `'interrupted'` y `'canceled'` se disparan cuando `cancel()` es llamado, no son errores reales
+
+```ts
+// Patrón correcto en speakParagraph:
+window.speechSynthesis.cancel()
+window.speechSynthesis.resume()  // Android Chrome fix
+// ... setup utterance ...
+window.speechSynthesis.speak(utterance)  // síncrono, en click handler
+```
+
+### Chat prefill desde el reader
+
+La página servidor `/books/[slug]/[chapter]/page.tsx` (no el componente cliente) renderiza un `<Link>` fijo:
+
+```tsx
+const subject = chapter.title ?? chapter.heading
+const prefill = encodeURIComponent(`I just read about ${subject} from ${book.title}. Can we talk about it?`)
+<Link href={`/chat?prefill=${prefill}`}>Practice conversation</Link>
+```
+
+`/app/chat/page.tsx` es un server component async que lee `searchParams.prefill` y lo pasa a `<ChatInterface prefill={...} />`. El input se inicializa con ese texto.
+
+---
+
+## Cómo agregar un nuevo libro
+
+**Solo tocar dos archivos: el nuevo archivo de contenido y `/lib/books.ts`.**
+
+### Paso 1 — Archivo de contenido
+
+Crear `/content/books/[slug].ts`:
+
+```ts
+import type { Book } from '@/lib/types'
+
+const book: Book = {
+  slug: 'my-book-slug',        // kebab-case, sin espacios
+  title: 'Book Title',
+  author: 'Author Name',
+  level: 'b1',                 // a1 | a2 | b1 | b2 | c1 | c2
+  source: 'Project Gutenberg', // o la fuente del texto
+  totalChapters: 20,
+  estimatedMinutes: 120,       // tiempo estimado de lectura total
+  chapters: [
+    {
+      number: 1,               // empieza en 1, incremental
+      heading: 'Chapter I',    // heading corto (aparece en la topbar)
+      title: 'Introduction',   // subtítulo largo, o null si no existe
+      paragraphs: [            // array de strings, uno por párrafo
+        'First paragraph...',
+        'Second paragraph...',
+      ],
+    },
+  ],
+}
+
+export default book
+```
+
+Convenciones:
+- `slug` debe coincidir exactamente con el nombre del archivo (sin `.ts`)
+- `level` debe ser uno de los niveles de guías existentes para que aparezca en `/guides`
+- `paragraphs` no deben incluir saltos de línea — cada elemento es un párrafo completo
+- Textos de dominio público preferidos (Project Gutenberg)
+
+### Paso 2 — Registrar en el registry
+
+En `/lib/books.ts`, añadir al objeto `BOOK_IMPORTS`:
+
+```ts
+const BOOK_IMPORTS: Record<string, () => Promise<{ default: Book }>> = {
+  'bulfinch-mythology': () => import('@/content/books/bulfinch-mythology'),
+  'tom-sawyer':         () => import('@/content/books/tom-sawyer'),
+  'my-book-slug':       () => import('@/content/books/my-book-slug'),  // ← agregar
+}
+```
+
+### Paso 3 — Eso es todo
+
+Las rutas `/books`, `/books/[slug]`, `/books/[slug]/[chapter]`, el `generateStaticParams` y la UI se actualizan automáticamente. Si el `level` del libro coincide con un nivel de guías existente, el libro aparecerá en la sección inferior de esos capítulos de guías.
 
 ---
 
@@ -395,6 +562,8 @@ recognition.interimResults = false
 
 Siempre hacer `window.speechSynthesis.cancel()` antes de hablar para evitar queue acumulada.
 
+En el reader de libros, añadir `window.speechSynthesis.resume()` después de `cancel()` (bug de Android Chrome donde `cancel()` deja la síntesis pausada). Ver sección Módulo Libros para detalles.
+
 ---
 
 ## Configuración de niveles — `lib/levels.ts`
@@ -445,7 +614,7 @@ azul IPA:       #3a8fd4
 - Bloques interactivos y de voz: `"use client"`, estado local únicamente
 - `dangerouslySetInnerHTML` permitido solo en `grammar_cols` items y `rule_block` — contenido viene de archivos TS internos, nunca de input del usuario
 - El API route no tiene lógica de negocio
-- `generateStaticParams` en todas las rutas dinámicas de `/guides`
+- `generateStaticParams` en todas las rutas dinámicas de `/guides` y `/books`
 
 ---
 

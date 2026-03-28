@@ -1,4 +1,5 @@
 import type { DialogueData } from '@/lib/types'
+import SpeakButton from './SpeakButton'
 
 interface Props {
   data: DialogueData
@@ -39,7 +40,10 @@ export default function Dialogue({ data }: Props) {
                     : 'rounded-tl-sm bg-[#1c1c1f] border border-[#2a2a2e]'
                 }`}
               >
-                <p className="text-[14px] text-white leading-snug">{line.text}</p>
+                <div className="flex items-start gap-2">
+                  <p className="flex-1 text-[14px] text-white leading-snug">{line.text}</p>
+                  <SpeakButton text={line.text} size="xs" />
+                </div>
                 <p className="text-[12px] text-[#888] mt-1 italic">{line.translation}</p>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import type { PillListData, PillColor } from '@/lib/types'
+import SpeakButton from './SpeakButton'
 
 const COLOR_MAP: Record<PillColor, { bg: string; text: string; border: string }> = {
   gold:    { bg: 'rgba(200,154,42,0.12)',  text: '#c89a2a', border: 'rgba(200,154,42,0.3)' },
@@ -27,7 +28,7 @@ export default function PillList({ data }: Props) {
         {data.items.map((item, i) => (
           <div
             key={i}
-            className="rounded-full border px-3 py-1.5 text-[13px] font-medium"
+            className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium"
             style={{
               backgroundColor: colors.bg,
               color: colors.text,
@@ -35,7 +36,8 @@ export default function PillList({ data }: Props) {
             }}
           >
             {item.en}
-            <span className="ml-1.5 opacity-60 text-[12px]">— {item.es}</span>
+            <span className="opacity-60 text-[12px]">— {item.es}</span>
+            <SpeakButton text={item.en} size="xs" />
           </div>
         ))}
       </div>

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { MessageCircle, BookOpen } from "lucide-react"
+import { MessageCircle, BookOpen, GraduationCap } from "lucide-react"
 
 export default function Home() {
   return (
@@ -16,7 +16,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md md:max-w-lg">
+      <div className="grid grid-cols-2 gap-4 w-full max-w-md md:max-w-lg">
         <Link
           href="/chat"
           className="group flex flex-col items-center gap-4 bg-[#161618] border border-[#2a2a2e] rounded-2xl p-7 md:p-9 hover:border-[#C41A1A] transition-colors"
@@ -42,6 +42,29 @@ export default function Home() {
             <div className="text-[13px] md:text-[15px] text-[#888] mt-1">Choose level + topic</div>
           </div>
         </Link>
+
+        <Link
+          href="/guides"
+          className="group flex flex-col items-center gap-4 bg-[#161618] border border-[#2a2a2e] rounded-2xl p-7 md:p-9 hover:border-[#C41A1A] transition-colors"
+        >
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#C41A1A]/10 flex items-center justify-center group-hover:bg-[#C41A1A]/20 transition-colors">
+            <GraduationCap className="h-6 w-6 md:h-7 md:w-7 text-[#C41A1A]" />
+          </div>
+          <div className="text-center">
+            <div className="text-base md:text-lg font-semibold text-white">Guides</div>
+            <div className="text-[13px] md:text-[15px] text-[#888] mt-1">Structured lessons by level</div>
+          </div>
+        </Link>
+
+        <div className="flex flex-col items-center gap-4 bg-[#161618] border border-[#2a2a2e] rounded-2xl p-7 md:p-9 opacity-30 cursor-not-allowed">
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#2a2a2e] flex items-center justify-center">
+            <span className="text-xl">🔜</span>
+          </div>
+          <div className="text-center">
+            <div className="text-base md:text-lg font-semibold text-white">Coming soon</div>
+            <div className="text-[13px] md:text-[15px] text-[#888] mt-1">New module</div>
+          </div>
+        </div>
       </div>
     </main>
   )

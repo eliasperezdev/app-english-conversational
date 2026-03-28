@@ -1,4 +1,5 @@
 import type { VocabTableData } from '@/lib/types'
+import SpeakButton from './SpeakButton'
 
 interface Props {
   data: VocabTableData
@@ -28,7 +29,12 @@ export default function VocabTable({ data }: Props) {
                 i % 2 === 0 ? 'bg-[#161618]' : 'bg-[#1a1a1d]'
               }`}
             >
-              <td className="px-4 py-3 font-medium text-white">{row.en}</td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">{row.en}</span>
+                  <SpeakButton text={row.en} size="xs" />
+                </div>
+              </td>
               <td className="px-4 py-3 font-mono text-[#3a8fd4] text-[13px]">{row.ipa}</td>
               <td className="px-4 py-3 text-[#d0d0d5]">{row.es}</td>
               {row.context !== undefined && (

@@ -183,6 +183,26 @@ export type Block =
   | { type: 'speak_word';     data: SpeakWordItem[] }
   | { type: 'dictation';      data: DictationItem[] }
 
+// ─── Books ────────────────────────────────────────────────────────────────────
+
+export interface BookChapter {
+  number: number
+  heading: string
+  title: string | null
+  paragraphs: string[]
+}
+
+export interface Book {
+  slug: string
+  title: string
+  author: string
+  level: string
+  source: string
+  totalChapters: number
+  estimatedMinutes: number
+  chapters: BookChapter[]
+}
+
 // ─── Content structure ────────────────────────────────────────────────────────
 
 export interface Card {

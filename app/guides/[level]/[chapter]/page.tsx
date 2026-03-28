@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getAllLevelSlugs, getAllChapterSlugs, getChapter } from '@/lib/guides'
+import { getAllLevelSlugs, getAllChapterSlugs, getChapter, getLevel } from '@/lib/guides'
 import BlockRenderer from '@/components/blocks/BlockRenderer'
+import StickyBar from '@/components/guides/StickyBar'
 
 export function generateStaticParams() {
   const params: { level: string; chapter: string }[] = []
@@ -18,52 +20,85 @@ interface Props {
 
 export default async function ChapterPage({ params }: Props) {
   const { level: levelSlug, chapter: chapterSlug } = await params
-  const chapter = await getChapter(levelSlug, chapterSlug)
-  if (!chapter) notFound()
+  const [chapter, level] = await Promise.all([
+    getChapter(levelSlug, chapterSlug),
+    Promise.resolve(getLevel(levelSlug)),
+  ])
+  if (!chapter || !level) notFound()
+
+  const chapterMeta = level.chapters.find((c) => c.slug === chapterSlug)
+  const practiceRoute = chapterMeta?.practice_route
+  const badge = levelSlug.toUpperCase()
 
   return (
-    <main className="p-8 text-white bg-[#0e0e0f] min-h-screen max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-1">{chapter.title}</h1>
-      <p className="text-[#888] mb-8">{chapter.description}</p>
+    <>
+      <main className={`min-h-screen bg-[#0e0e0f] px-6 py-12 ${practiceRoute ? 'pb-32' : ''}`}>
+        <div className="max-w-3xl mx-auto">
 
-      {chapter.sections.map((section) => (
-        <div key={section.id} className="mb-10">
-          <div className="flex items-center gap-2 mb-4">
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ backgroundColor: section.dotColor }}
-            />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#888]">
-              {section.label}
+          {/* Back */}
+          <Link
+            href={`/guides/${levelSlug}`}
+            className="inline-flex items-center gap-1.5 text-[#888] text-sm hover:text-white transition-colors mb-10"
+          >
+            ← {level.label}
+          </Link>
+
+          {/* Header */}
+          <div className="mb-10">
+            <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-[#C41A1A] bg-[#C41A1A]/10 rounded-full px-3 py-1 mb-3">
+              {badge}
             </span>
+            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+              {chapter.title}
+            </h1>
+            <p className="text-[#888] text-base">{chapter.description}</p>
           </div>
 
-          <div className="space-y-4">
-            {section.cards.map((card) => (
-              <div
-                key={card.id}
-                className="rounded-2xl border border-[#2a2a2e] bg-[#161618] p-5"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <span
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                    style={{ backgroundColor: card.iconBg }}
-                  >
-                    {card.icon}
-                  </span>
-                  <h2 className="font-semibold text-[15px]">{card.title}</h2>
-                </div>
-
-                <div className="space-y-4">
-                  {card.blocks.map((block, i) => (
-                    <BlockRenderer key={i} block={block} />
-                  ))}
-                </div>
+          {/* Sections */}
+          {chapter.sections.map((section) => (
+            <div key={section.id} className="mb-12">
+              <div className="flex items-center gap-2 mb-5">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: section.dotColor }}
+                />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#888]">
+                  {section.label}
+                </span>
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-4">
+                {section.cards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="rounded-2xl border border-[#2a2a2e] bg-[#161618] p-6"
+                  >
+                    <div className="flex items-center gap-3 mb-5">
+                      <span
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+                        style={{ background: card.iconBg }}
+                      >
+                        {card.icon}
+                      </span>
+                      <h2 className="font-semibold text-white text-[15px]">{card.title}</h2>
+                    </div>
+
+                    <div className="space-y-4">
+                      {card.blocks.map((block, i) => (
+                        <BlockRenderer key={i} block={block} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
-    </main>
+      </main>
+
+      {practiceRoute && (
+        <StickyBar levelSlug={levelSlug} practiceRoute={practiceRoute} />
+      )}
+    </>
   )
 }

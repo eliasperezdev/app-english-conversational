@@ -15,6 +15,8 @@ import WordOrder from './WordOrder'
 import Matching from './Matching'
 import Flashcard from './Flashcard'
 import Quiz from './Quiz'
+import SpeakWord from './SpeakWord'
+import Dictation from './Dictation'
 
 interface Props {
   block: Block
@@ -38,9 +40,7 @@ export default function BlockRenderer({ block }: Props) {
     case 'matching':       return <Matching data={block.data} />
     case 'flashcard':      return <Flashcard data={block.data} />
     case 'quiz':           return <Quiz data={block.data} />
-    // Speech blocks — added in Phase 5
-    case 'speak_word':
-    case 'dictation':
-      return null
+    case 'speak_word': return <SpeakWord data={block.data} />
+    case 'dictation':  return <Dictation data={block.data} />
   }
 }

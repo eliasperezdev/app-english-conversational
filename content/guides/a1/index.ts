@@ -27,6 +27,7 @@ export const a1Meta: LevelMeta = {
       icon: '💬',
       description: 'Presentarte, describir tu familia, hablar de rutinas y precios.',
       available: true,
+      practice_route: 'shopping',
     },
     {
       slug: 'pronunciation',

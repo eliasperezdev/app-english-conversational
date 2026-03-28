@@ -27,6 +27,7 @@ export const a2Meta: LevelMeta = {
       icon: '💬',
       description: 'Hablar del pasado, hacer invitaciones, pedir indicaciones, ir al médico y hacer compras.',
       available: true,
+      practice_route: 'travel',
     },
     {
       slug: 'pronunciation',

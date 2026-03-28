@@ -10,9 +10,9 @@ export default function VocabTable({ data }: Props) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[#2a2a2e] bg-[#1c1c1f]">
-            {data.headers.map((h) => (
+            {data.headers.map((h, i) => (
               <th
-                key={h}
+                key={i}
                 className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.15em] text-[#888]"
               >
                 {h}

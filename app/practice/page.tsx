@@ -4,12 +4,12 @@ import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, ChevronRight } from "lucide-react"
 import { levels } from "@/lib/levels"
-import { topics } from "@/lib/topics"
+import { topics, topicsByLevel } from "@/lib/topics"
 
 export default function PracticePage() {
   const levelKeys = Object.keys(levels)
-  const topicKeys = Object.keys(topics)
   const [selectedLevel, setSelectedLevel] = useState(levelKeys[2]) // default B1
+  const topicKeys = topicsByLevel[selectedLevel] ?? []
 
   return (
     <main className="min-h-screen bg-[#0e0e0f] flex flex-col">

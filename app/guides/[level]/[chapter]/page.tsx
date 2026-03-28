@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getAllLevelSlugs, getAllChapterSlugs, getChapter, getLevel } from '@/lib/guides'
+import { getBooksByLevel } from '@/lib/books'
 import BlockRenderer from '@/components/blocks/BlockRenderer'
 import StickyBar from '@/components/guides/StickyBar'
 
@@ -20,9 +21,10 @@ interface Props {
 
 export default async function ChapterPage({ params }: Props) {
   const { level: levelSlug, chapter: chapterSlug } = await params
-  const [chapter, level] = await Promise.all([
+  const [chapter, level, levelBooks] = await Promise.all([
     getChapter(levelSlug, chapterSlug),
     Promise.resolve(getLevel(levelSlug)),
+    getBooksByLevel(levelSlug),
   ])
   if (!chapter || !level) notFound()
 
@@ -93,6 +95,34 @@ export default async function ChapterPage({ params }: Props) {
               </div>
             </div>
           ))}
+
+          {/* Practice reading — books at this level */}
+          {levelBooks.length > 0 && (
+            <div className="mt-4 mb-12">
+              <div className="flex items-center gap-2 mb-5">
+                <span className="w-2 h-2 rounded-full shrink-0 bg-[#C41A1A]" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#888]">
+                  Practice Reading
+                </span>
+              </div>
+              <p className="text-[#555] text-sm mb-4">Books at this level</p>
+              <div className="space-y-3">
+                {levelBooks.map((book) => (
+                  <Link
+                    key={book.slug}
+                    href={`/books/${book.slug}`}
+                    className="group flex items-center justify-between rounded-2xl border border-[#2a2a2e] bg-[#161618] px-6 py-4 hover:border-[#C41A1A] transition-colors"
+                  >
+                    <div>
+                      <p className="font-semibold text-white text-sm">{book.title}</p>
+                      <p className="text-[#555] text-xs mt-0.5">{book.author}</p>
+                    </div>
+                    <span className="text-[#555] text-sm group-hover:text-[#888] transition-colors">→</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 

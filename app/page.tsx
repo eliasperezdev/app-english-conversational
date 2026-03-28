@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { MessageCircle, BookOpen, GraduationCap } from "lucide-react"
+import { MessageCircle, BookOpen, GraduationCap, Library } from "lucide-react"
 
 export default function Home() {
   return (
@@ -53,6 +53,19 @@ export default function Home() {
           <div className="text-center">
             <div className="text-base md:text-lg font-semibold text-white">Guides</div>
             <div className="text-[13px] md:text-[15px] text-[#888] mt-1">Structured lessons by level</div>
+          </div>
+        </Link>
+
+        <Link
+          href="/books"
+          className="group flex flex-col items-center gap-4 bg-[#161618] border border-[#2a2a2e] rounded-2xl p-7 md:p-9 hover:border-[#C41A1A] transition-colors"
+        >
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#C41A1A]/10 flex items-center justify-center group-hover:bg-[#C41A1A]/20 transition-colors">
+            <Library className="h-6 w-6 md:h-7 md:w-7 text-[#C41A1A]" />
+          </div>
+          <div className="text-center">
+            <div className="text-base md:text-lg font-semibold text-white">Books</div>
+            <div className="text-[13px] md:text-[15px] text-[#888] mt-1">Classic literature by level</div>
           </div>
         </Link>
 

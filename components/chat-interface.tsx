@@ -16,6 +16,7 @@ interface Props {
   mode: "free" | "practice"
   level?: string
   topic?: string
+  prefill?: string
 }
 
 function getTextFromLastAssistantMessage(
@@ -31,8 +32,8 @@ function getTextFromLastAssistantMessage(
   )
 }
 
-export function ChatInterface({ mode, level, topic }: Props) {
-  const [input, setInput] = useState("")
+export function ChatInterface({ mode, level, topic, prefill }: Props) {
+  const [input, setInput] = useState(prefill ?? "")
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)

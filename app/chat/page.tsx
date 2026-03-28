@@ -1,5 +1,10 @@
 import { ChatInterface } from "@/components/chat-interface"
 
-export default function ChatPage() {
-  return <ChatInterface mode="free" />
+interface Props {
+  searchParams: Promise<{ prefill?: string }>
+}
+
+export default async function ChatPage({ searchParams }: Props) {
+  const { prefill } = await searchParams
+  return <ChatInterface mode="free" prefill={prefill} />
 }

@@ -4,12 +4,13 @@
 
 Web app para practicar inglés conversacional con IA. El usuario habla o escribe, un LLM responde como tutor, y la respuesta se lee en voz alta con cadencia humana.
 
-Tres módulos activos:
+Cuatro módulos activos:
 - **Chat libre** (`/chat`): conversación abierta, sin restricciones de tema ni nivel
 - **Chat estructurado** (`/practice/[level]/[topic]`): el usuario elige nivel (A1–C2) y tema
 - **Guías** (`/guides`): lecciones estructuradas por nivel con bloques de contenido, ejercicios y práctica de voz
+- **Libros** (`/books`): lectura de textos en inglés con TTS palabra-por-palabra y botón de práctica de conversación
 
-Un cuarto módulo está planificado pero **no ha comenzado**. No crear ni tocar hasta que esté indicado.
+Un quinto módulo está planificado pero **no ha comenzado**. No crear ni tocar hasta que esté indicado.
 
 ---
 
@@ -43,6 +44,12 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
       page.tsx                    → lista de capítulos del nivel
       /[chapter]
         page.tsx                  → página de capítulo con bloques y sticky bar
+  /books
+    page.tsx                      → listado de todos los libros
+    /[slug]
+      page.tsx                    → detalle del libro con lista de capítulos
+      /[chapter]
+        page.tsx                  → reader page (server shell) + botón "Practice conversation"
   /api/chat
     route.ts                      → Route Handler único para chat libre y estructurado
 /components
@@ -73,6 +80,8 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
     Dictation.tsx                 → dictation ("use client")
   /guides
     StickyBar.tsx                 → barra inferior fija ("use client")
+  /books
+    ReaderView.tsx                → lector con TTS palabra-por-palabra ("use client")
 /lib
   types.ts                        → todos los tipos del proyecto (ver sección Tipos)
   guides.ts                       → getLevel(), getChapter(), getAllLevelSlugs(), etc.
@@ -80,6 +89,7 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
   tts.ts                          → calcularDelay(text: string): number
   levels.ts                       → configuración de niveles para el chat
   topics.ts                       → configuración de temas para el chat
+  books.ts                        → getAllBooksMetadata(), getBook(), getBooksByLevel(), getChapter()
 /content
   /guides
     /a1
@@ -93,6 +103,9 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
       vocabulary.ts, grammar.ts, communication.ts, pronunciation.ts
     /b1  ← próximo nivel
     /b2, /c1, /c2  ← futuros
+  /books
+    bulfinch-mythology.ts         → Book (export default)
+    tom-sawyer.ts                 → Book (export default)
 ```
 
 ---

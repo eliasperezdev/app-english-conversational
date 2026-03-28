@@ -4,7 +4,9 @@ type BookMeta = Omit<Book, 'chapters'>
 
 // Registry of all available books (slug → dynamic import)
 const BOOK_IMPORTS: Record<string, () => Promise<{ default: Book }>> = {
-  'bulfinch-mythology': () => import('@/content/books/bulfinch-mythology'),
+  'bulfinch-mythology':  () => import('@/content/books/bulfinch-mythology'),
+  'alice-in-wonderland': () => import('@/content/books/alice-in-wonderland'),
+  'war-of-the-worlds':   () => import('@/content/books/war-of-the-worlds'),
 }
 
 export function getAllBooks(): BookMeta[] {

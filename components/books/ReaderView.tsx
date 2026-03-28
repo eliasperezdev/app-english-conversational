@@ -3,6 +3,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import type { BookChapter } from '@/lib/types'
+import { splitSentences } from '@/lib/tts'
 
 interface Props {
   slug: string
@@ -41,17 +42,21 @@ function findWordIdx(spans: WordSpan[], charIndex: number): number {
 
 export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: Props) {
   const [activePara, setActivePara] = useState<number | null>(null)
+  const [activeSentence, setActiveSentence] = useState<number | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<Speed>(1)
 
   // Refs to avoid stale closures in TTS callbacks
   const isPlayingRef = useRef(false)
   const activeParaIdxRef = useRef<number | null>(null)
+  const activeSentenceIdxRef = useRef<number | null>(null)
+  const sentencesRef = useRef<string[]>([])         // sentences of the active paragraph
+  const wordOffsetRef = useRef<number>(0)            // paragraph-global word index where active sentence starts
   const speedRef = useRef<Speed>(1)
   const wordSpansRef = useRef<WordSpan[]>([])
   const activeWordElRef = useRef<HTMLElement | null>(null)
   const paraRefs = useRef<(HTMLParagraphElement | null)[]>([])
-  const speakParaRef = useRef<((idx: number, rate: Speed) => void) | null>(null)
+  const speakSentenceRef = useRef<((paraIdx: number, sentenceIdx: number, rate: Speed) => void) | null>(null)
 
   const clearWordHighlight = useCallback(() => {
     if (activeWordElRef.current) {
@@ -61,18 +66,35 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     }
   }, [])
 
-  const speakParagraph = useCallback((paraIdx: number, rate: Speed) => {
+  const speakSentence = useCallback((paraIdx: number, sentenceIdx: number, rate: Speed) => {
     window.speechSynthesis.cancel()
     // Android Chrome bug: cancel() can leave synthesis in a paused state.
     // resume() ensures it's active before speak().
     window.speechSynthesis.resume()
     clearWordHighlight()
 
-    const text = chapter.paragraphs[paraIdx]
+    const paraText = chapter.paragraphs[paraIdx]
+    if (!paraText) return
+
+    const sentences = splitSentences(paraText)
+    sentencesRef.current = sentences
+
+    const text = sentences[sentenceIdx]
     if (!text) return
 
+    // Compute paragraph-global word offset for this sentence
+    let wordOffset = 0
+    for (let i = 0; i < sentenceIdx; i++) {
+      wordOffset += buildWordSpans(sentences[i]).length
+    }
+    wordOffsetRef.current = wordOffset
+
+    // Word spans are sentence-local; charIndex from onboundary is also sentence-local
     const spans = buildWordSpans(text)
     wordSpansRef.current = spans
+
+    setActiveSentence(sentenceIdx)
+    activeSentenceIdxRef.current = sentenceIdx
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'en-US'
@@ -80,10 +102,12 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
 
     utterance.onboundary = (event) => {
       if (event.name !== 'word') return
-      const idx = findWordIdx(wordSpansRef.current, event.charIndex)
+      // sentence-local word index → paragraph-global data-wi
+      const localIdx = findWordIdx(wordSpansRef.current, event.charIndex)
+      const globalIdx = wordOffsetRef.current + localIdx
       clearWordHighlight()
       const paraEl = paraRefs.current[paraIdx]
-      const el = paraEl?.querySelector<HTMLElement>(`[data-wi="${idx}"]`)
+      const el = paraEl?.querySelector<HTMLElement>(`[data-wi="${globalIdx}"]`)
       if (el) {
         el.style.backgroundColor = 'rgba(196, 26, 26, 0.25)'
         el.style.borderRadius = '2px'
@@ -93,15 +117,24 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
 
     utterance.onend = () => {
       clearWordHighlight()
-      const nextIdx = paraIdx + 1
-      if (nextIdx < chapter.paragraphs.length && isPlayingRef.current) {
-        setActivePara(nextIdx)
-        activeParaIdxRef.current = nextIdx
-        paraRefs.current[nextIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        speakParaRef.current?.(nextIdx, speedRef.current)
+      if (!isPlayingRef.current) return
+
+      const nextSentence = sentenceIdx + 1
+      if (nextSentence < sentencesRef.current.length) {
+        // Advance to next sentence in the same paragraph
+        speakSentenceRef.current?.(paraIdx, nextSentence, speedRef.current)
       } else {
-        setIsPlaying(false)
-        isPlayingRef.current = false
+        // Paragraph exhausted — advance to next paragraph
+        const nextPara = paraIdx + 1
+        if (nextPara < chapter.paragraphs.length) {
+          setActivePara(nextPara)
+          activeParaIdxRef.current = nextPara
+          paraRefs.current[nextPara]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          speakSentenceRef.current?.(nextPara, 0, speedRef.current)
+        } else {
+          setIsPlaying(false)
+          isPlayingRef.current = false
+        }
       }
     }
 
@@ -116,10 +149,10 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     window.speechSynthesis.speak(utterance)
   }, [chapter.paragraphs, clearWordHighlight])
 
-  // Keep speakParaRef current so onend can call the latest version
+  // Keep speakSentenceRef current so onend can call the latest version
   useEffect(() => {
-    speakParaRef.current = speakParagraph
-  }, [speakParagraph])
+    speakSentenceRef.current = speakSentence
+  }, [speakSentence])
 
   // Pre-load voices so first speak() works immediately on mobile
   useEffect(() => {
@@ -133,12 +166,13 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
 
   const handlePlay = useCallback(() => {
     const para = activeParaIdxRef.current ?? 0
+    const sent = activeSentenceIdxRef.current ?? 0
     setActivePara(para)
     activeParaIdxRef.current = para
     setIsPlaying(true)
     isPlayingRef.current = true
-    speakParagraph(para, speedRef.current)
-  }, [speakParagraph])
+    speakSentence(para, sent, speedRef.current)
+  }, [speakSentence])
 
   const handlePause = useCallback(() => {
     window.speechSynthesis.cancel()
@@ -154,6 +188,8 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     isPlayingRef.current = false
     setActivePara(null)
     activeParaIdxRef.current = null
+    setActiveSentence(null)
+    activeSentenceIdxRef.current = null
   }, [clearWordHighlight])
 
   const handleParaClick = useCallback((idx: number) => {
@@ -161,16 +197,24 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     activeParaIdxRef.current = idx
     setIsPlaying(true)
     isPlayingRef.current = true
-    speakParagraph(idx, speedRef.current)
-  }, [speakParagraph])
+    speakSentence(idx, 0, speedRef.current)
+  }, [speakSentence])
+
+  const handleSentenceClick = useCallback((paraIdx: number, sentenceIdx: number) => {
+    setActivePara(paraIdx)
+    activeParaIdxRef.current = paraIdx
+    setIsPlaying(true)
+    isPlayingRef.current = true
+    speakSentence(paraIdx, sentenceIdx, speedRef.current)
+  }, [speakSentence])
 
   const handleSpeedChange = useCallback((newSpeed: Speed) => {
     speedRef.current = newSpeed
     setSpeed(newSpeed)
     if (isPlayingRef.current && activeParaIdxRef.current !== null) {
-      speakParagraph(activeParaIdxRef.current, newSpeed)
+      speakSentence(activeParaIdxRef.current, activeSentenceIdxRef.current ?? 0, newSpeed)
     }
-  }, [speakParagraph])
+  }, [speakSentence])
 
   const progress = activePara !== null
     ? ((activePara + 1) / chapter.paragraphs.length) * 100
@@ -227,8 +271,18 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
       {/* Content */}
       <main className="max-w-[680px] mx-auto px-6 py-10 pb-36">
         {chapter.paragraphs.map((para, idx) => {
-          const isActive = activePara === idx
-          const wordSpans = isActive ? buildWordSpans(para) : null
+          const isActivePara = activePara === idx
+          const sentences = isActivePara ? splitSentences(para) : null
+
+          // Precompute paragraph-global word offset for each sentence
+          const sentWordOffsets: number[] = []
+          if (sentences) {
+            let offset = 0
+            for (const sent of sentences) {
+              sentWordOffsets.push(offset)
+              offset += buildWordSpans(sent).length
+            }
+          }
 
           return (
             <p
@@ -237,17 +291,38 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
               onClick={() => handleParaClick(idx)}
               className={[
                 'text-[#d0d0d5] text-[17px] leading-[1.85] mb-6 cursor-pointer rounded-lg px-3 py-1 -mx-3 transition-colors select-none',
-                isActive
+                isActivePara
                   ? 'border-l-2 border-[#C41A1A] bg-[#161618] pl-[14px]'
                   : 'hover:bg-[#111113]',
               ].join(' ')}
             >
-              {isActive && wordSpans
-                ? wordSpans.map((w, wi) => (
-                    <React.Fragment key={wi}>
-                      <span data-wi={wi}>{w.word}</span>{' '}
-                    </React.Fragment>
-                  ))
+              {isActivePara && sentences
+                ? sentences.map((sent, sIdx) => {
+                    const isActiveSent = activeSentence === sIdx
+                    const sentOffset = sentWordOffsets[sIdx]
+                    const wordSpans = isActiveSent ? buildWordSpans(sent) : null
+
+                    return (
+                      <span
+                        key={sIdx}
+                        onClick={(e) => { e.stopPropagation(); handleSentenceClick(idx, sIdx) }}
+                        className={[
+                          'rounded transition-colors',
+                          isActiveSent
+                            ? 'bg-[#1f1f22]'
+                            : 'hover:bg-[#111113] cursor-pointer',
+                        ].join(' ')}
+                      >
+                        {isActiveSent && wordSpans
+                          ? wordSpans.map((w, wi) => (
+                              <React.Fragment key={wi}>
+                                <span data-wi={sentOffset + wi}>{w.word}</span>{' '}
+                              </React.Fragment>
+                            ))
+                          : sent + ' '}
+                      </span>
+                    )
+                  })
                 : para}
             </p>
           )
@@ -299,11 +374,22 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
             <span className="w-3 h-3 bg-current rounded-sm block" />
           </button>
 
-          {/* Paragraph indicator */}
-          <span className="text-xs text-[#555] shrink-0 tabular-nums">
-            {activePara !== null
-              ? `¶ ${activePara + 1} / ${chapter.paragraphs.length}`
-              : `${chapter.paragraphs.length} ¶`}
+          {/* Position indicator */}
+          <span className="text-xs shrink-0 tabular-nums leading-tight">
+            {activePara !== null ? (
+              <>
+                <span className="text-[#555] block">
+                  ¶ {activePara + 1} / {chapter.paragraphs.length}
+                </span>
+                {activeSentence !== null && sentencesRef.current.length > 1 && (
+                  <span className="text-[#C41A1A] block">
+                    S {activeSentence + 1} / {sentencesRef.current.length}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-[#555]">{chapter.paragraphs.length} ¶</span>
+            )}
           </span>
 
           <div className="flex-1" />

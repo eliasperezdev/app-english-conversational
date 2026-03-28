@@ -10,6 +10,11 @@ import NumberGrid from './NumberGrid'
 import ColorSwatches from './ColorSwatches'
 import AlphabetGrid from './AlphabetGrid'
 import VowelCards from './VowelCards'
+import FillBlank from './FillBlank'
+import WordOrder from './WordOrder'
+import Matching from './Matching'
+import Flashcard from './Flashcard'
+import Quiz from './Quiz'
 
 interface Props {
   block: Block
@@ -28,12 +33,12 @@ export default function BlockRenderer({ block }: Props) {
     case 'color_swatches': return <ColorSwatches data={block.data} />
     case 'alphabet_grid':  return <AlphabetGrid data={block.data} />
     case 'vowel_cards':    return <VowelCards data={block.data} />
-    // Interactive and speech blocks — added in Phase 4 / Phase 5
-    case 'fill_blank':
-    case 'word_order':
-    case 'matching':
-    case 'flashcard':
-    case 'quiz':
+    case 'fill_blank':     return <FillBlank data={block.data} />
+    case 'word_order':     return <WordOrder data={block.data} />
+    case 'matching':       return <Matching data={block.data} />
+    case 'flashcard':      return <Flashcard data={block.data} />
+    case 'quiz':           return <Quiz data={block.data} />
+    // Speech blocks — added in Phase 5
     case 'speak_word':
     case 'dictation':
       return null

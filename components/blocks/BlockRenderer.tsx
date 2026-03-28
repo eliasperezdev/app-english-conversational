@@ -1,0 +1,41 @@
+import type { Block } from '@/lib/types'
+import VocabTable from './VocabTable'
+import GrammarCols from './GrammarCols'
+import FormulaBox from './FormulaBox'
+import ExamplesGrid from './ExamplesGrid'
+import PillList from './PillList'
+import RuleBlock from './RuleBlock'
+import Dialogue from './Dialogue'
+import NumberGrid from './NumberGrid'
+import ColorSwatches from './ColorSwatches'
+import AlphabetGrid from './AlphabetGrid'
+import VowelCards from './VowelCards'
+
+interface Props {
+  block: Block
+}
+
+export default function BlockRenderer({ block }: Props) {
+  switch (block.type) {
+    case 'vocab_table':    return <VocabTable data={block.data} />
+    case 'grammar_cols':   return <GrammarCols data={block.data} />
+    case 'formula_box':    return <FormulaBox data={block.data} />
+    case 'examples_grid':  return <ExamplesGrid data={block.data} />
+    case 'pill_list':      return <PillList data={block.data} />
+    case 'rule_block':     return <RuleBlock data={block.data} />
+    case 'dialogue':       return <Dialogue data={block.data} />
+    case 'number_grid':    return <NumberGrid data={block.data} />
+    case 'color_swatches': return <ColorSwatches data={block.data} />
+    case 'alphabet_grid':  return <AlphabetGrid data={block.data} />
+    case 'vowel_cards':    return <VowelCards data={block.data} />
+    // Interactive and speech blocks — added in Phase 4 / Phase 5
+    case 'fill_blank':
+    case 'word_order':
+    case 'matching':
+    case 'flashcard':
+    case 'quiz':
+    case 'speak_word':
+    case 'dictation':
+      return null
+  }
+}

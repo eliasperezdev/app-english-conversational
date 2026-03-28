@@ -2,111 +2,46 @@
 
 > Stop after each phase. Wait for explicit approval before continuing.
 
----
-
-## Phase 1 — Types and data layer
-
-### Goal
-Define all TypeScript types inferred from the content files, then create
-a thin data-access layer. Nothing renders yet.
-
-### Checklist
-- [ ] Create `/lib/types.ts` with all exported types:
-  - `ChapterMeta` — { slug, title, icon, description, available, practice_route? }
-  - `LevelMeta` — { level, label, description, available, chapters: ChapterMeta[] }
-  - `Chapter` — { slug, title, description, sections: Section[] }
-  - `Section` — { id, label, dotColor, cards: Card[] }
-  - `Card` — { id, icon, iconBg, title, blocks: Block[] }
-  - `Block` — discriminated union on `type` covering all 18 block types:
-    - Read-only: `vocab_table`, `grammar_cols`, `formula_box`, `examples_grid`,
-      `pill_list`, `rule_block`, `dialogue`, `number_grid`, `color_swatches`,
-      `alphabet_grid`, `vowel_cards`
-    - Interactive: `fill_blank`, `word_order`, `matching`, `flashcard`, `quiz`
-    - Speech: `speak_word`, `dictation`
-  - Nested shape types for each block's `data` field (typed precisely, no `any`)
-- [ ] Create `/lib/guides.ts` with:
-  - `LEVELS` registry — imports all `*Meta` objects from content index files,
-    keyed by level slug (e.g., `{ a1: a1Meta, a2: a2Meta }`)
-  - `getLevel(slug: string): LevelMeta | undefined`
-  - `getChapter(levelSlug: string, chapterSlug: string): Promise<Chapter | undefined>`
-    (dynamic import from the content file so page bundles stay lean)
-  - `getAllLevelSlugs(): string[]`
-  - `getAllChapterSlugs(levelSlug: string): string[]`
-
-### CSS variables needed
-Add to `globals.css` (used by content dotColor values):
-```css
---gold:   #c89a2a;
---teal:   #2da899;
---blue:   #3a8fd4;
---coral:  #e05a44;
-```
-
-### Verification
-- Run `npx tsc --noEmit` — zero errors.
-- In a scratch test (or a temporary `console.log` in any server component),
-  import `getChapter('a1', 'grammar')` and confirm it resolves to the
-  grammar Chapter object.
+Status legend: ✅ Done · 🔜 Next · 🔲 Pending
 
 ---
 
-## Phase 2 — Routes and static params
+## Phase 1 — Types and data layer ✅ DONE
 
-### Goal
-Wire up the three route pages with `generateStaticParams` so Next.js can
-statically build all guide pages. No real UI — just text to confirm routing.
-
-### Checklist
-- [ ] `/app/guides/page.tsx` — server component
-  - Lists all level slugs from `getAllLevelSlugs()`
-  - Renders plain text: `"Guides — levels: a1, a2, …"`
-- [ ] `/app/guides/[level]/page.tsx` — server component
-  - `generateStaticParams` using `getAllLevelSlugs()`
-  - Calls `getLevel(params.level)`; 404 with `notFound()` if undefined
-  - Renders plain text: `"Level: a1 — chapters: vocabulary, grammar, …"`
-- [ ] `/app/guides/[level]/[chapter]/page.tsx` — server component
-  - `generateStaticParams` using all level+chapter slug combinations
-  - Calls `getChapter(params.level, params.chapter)`; 404 if undefined
-  - Renders plain text: `"Chapter: grammar — N sections, M cards"`
-
-### Verification
-Navigate to:
-- `/guides` → shows level list text
-- `/guides/a1` → shows a1 chapter list text
-- `/guides/a1/grammar` → shows grammar section/card count text
-- `/guides/a1/pronunciation` → shows pronunciation section/card count text
+All items complete and verified:
+- `lib/types.ts` — all types defined (LevelMeta, ChapterMeta, Chapter, Section, Card, Block union with 18 variants)
+- `lib/guides.ts` — getLevel, getChapter (dynamic import), getAllLevelSlugs, getAllChapterSlugs
+- `content/guides/a1/` — vocabulary.ts, grammar.ts, communication.ts, pronunciation.ts, index.ts
+- `content/guides/a2/` — same four chapter files + index.ts
 
 ---
 
-## Phase 3 — Read-only block renderer components
+## Phase 2 — Routes and static params ✅ DONE
+
+All items complete and verified:
+- `app/guides/page.tsx` — placeholder text, uses getAllLevelSlugs
+- `app/guides/[level]/page.tsx` — generateStaticParams + notFound guard + placeholder text
+- `app/guides/[level]/[chapter]/page.tsx` — generateStaticParams for all level+chapter combos + notFound guard + placeholder text
+
+---
+
+## Phase 3 — Read-only block renderer components 🔜 NEXT
 
 ### Goal
 Render all content (non-interactive) blocks correctly. The chapter page
 gets its first real visual output.
 
+### What already exists (10/11 components built)
+- `VocabTable` ✅ · `GrammarCols` ✅ · `FormulaBox` ✅ · `ExamplesGrid` ✅
+- `PillList` ✅ · `RuleBlock` ✅ · `Dialogue` ✅ · `NumberGrid` ✅
+- `ColorSwatches` ✅ · `AlphabetGrid` ✅
+
 ### Checklist
-- [ ] Create `/components/blocks/` directory
-- [ ] One component per read-only block type:
-  - `VocabTable` — table with striped rows, IPA in monospace
-  - `GrammarCols` — 2–3 column layout; column styles for `affirm`/`neg`/`inter`
-    use semantic tints (green/red/blue); `custom` uses inline `color`/`titleColor`
-    from data; items rendered with `dangerouslySetInnerHTML` (content is trusted,
-    internal TS files only)
-  - `FormulaBox` — monospace code-like box; `label` bold, `text` preserves whitespace
-  - `ExamplesGrid` — 2-column grid (en / es); optional `note` in muted style
-  - `PillList` — colored pill badges; `label` header above; `color` token maps to
-    a fixed palette (`gold`, `neutral`, `coral`, `purple`)
-  - `RuleBlock` — full-width card with left accent border; HTML via
-    `dangerouslySetInnerHTML` (same trust rationale)
-  - `Dialogue` — chat-bubble layout; speaker A/B alternates sides; uses
-    `speakerLabel` if present else `speaker`; translation in muted text below
-  - `NumberGrid` — responsive grid of `num → word` tiles
-  - `ColorSwatches` — grid of color squares with name + es label
-  - `AlphabetGrid` — 5-column grid; letter large, IPA small below
-  - `VowelCards` — card per vowel sound; uses inline `color`/`borderColor`
+- [ ] `VowelCards` — card per vowel sound; uses inline `color`/`borderColor` from data; large vowel glyph, IPA, label, example words
 - [ ] Create `/components/blocks/BlockRenderer.tsx`
   - Switch on `block.type`, renders the correct component
   - Exhaustive switch with TypeScript narrowing (no fallthrough `any`)
+  - Interactive/speech types return `null` for now (added in Phase 4/5)
 - [ ] Update `/app/guides/[level]/[chapter]/page.tsx`
   - Replace placeholder text with actual chapter layout:
     sections → cards → blocks via `BlockRenderer`
@@ -114,7 +49,7 @@ gets its first real visual output.
   - No sticky bar yet (Phase 6)
 
 ### Verification
-- `/guides/a1/vocabulary` renders all 7 content cards with correct data
+- `/guides/a1/vocabulary` renders all content cards with correct data
 - `/guides/a1/pronunciation` renders `AlphabetGrid` and `VowelCards` correctly
 - Zero TypeScript errors
 

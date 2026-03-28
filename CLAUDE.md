@@ -171,11 +171,30 @@ export default book
 ### Reader — `components/books/ReaderView.tsx`
 
 Componente cliente que maneja TTS con:
+- **Cola a nivel de oración** — cada párrafo se divide en oraciones via `splitSentences()` (`/lib/tts.ts`); cada oración es su propio `SpeechSynthesisUtterance`
 - **Highlight palabra a palabra** via `onboundary` + DOM directo (sin re-renders de React)
-- **Auto-advance** de párrafo al terminar (`onend` → siguiente párrafo)
-- **Velocidades**: 0.75×, 1×, 1.25×, 1.5× — aplicables en caliente
-- **Barra de progreso** proporcional al párrafo activo
-- Click en cualquier párrafo inicia lectura desde ese punto
+- **Auto-advance** oración → oración → párrafo siguiente (`onend` avanza oración; al agotar las oraciones del párrafo, pasa al siguiente)
+- **Velocidades**: 0.75×, 1×, 1.25×, 1.5× — aplicables en caliente (reinicia desde la oración activa)
+- **Barra de progreso** proporcional al párrafo activo; indicador `S X / Y` en el player bar para párrafos con más de una oración
+- Click en un párrafo inactivo → empieza desde oración 0; click en una oración dentro del párrafo activo → empieza desde esa oración
+
+### Arquitectura de índices `data-wi`
+
+Los spans de palabras usan índices **paragraph-global** en `data-wi`, aunque el utterance solo habla una oración. Esto permite que `onboundary` (cuyo `charIndex` es relativo a la oración) resuelva el elemento DOM correcto:
+
+```ts
+// En speakSentence:
+let wordOffset = 0
+for (let i = 0; i < sentenceIdx; i++) {
+  wordOffset += buildWordSpans(sentences[i]).length  // palabras antes de esta oración
+}
+// En onboundary:
+const localIdx = findWordIdx(wordSpansRef.current, event.charIndex)
+const globalIdx = wordOffsetRef.current + localIdx
+paraEl.querySelector(`[data-wi="${globalIdx}"]`)     // busca en el DOM del párrafo completo
+```
+
+En el render, cada oración activa emite `data-wi={sentOffset + wi}` para que coincida.
 
 **Notas críticas de TTS en mobile (Android Chrome):**
 - Llamar `window.speechSynthesis.getVoices()` en `useEffect([], [])` para precargar voces — sin esto la primera reproducción puede fallar en silencio
@@ -184,11 +203,20 @@ Componente cliente que maneja TTS con:
 - Filtrar errores de `onerror`: `'interrupted'` y `'canceled'` se disparan cuando `cancel()` es llamado, no son errores reales
 
 ```ts
-// Patrón correcto en speakParagraph:
+// Patrón correcto en speakSentence:
 window.speechSynthesis.cancel()
 window.speechSynthesis.resume()  // Android Chrome fix
-// ... setup utterance ...
+// ... setup utterance para la oración ...
 window.speechSynthesis.speak(utterance)  // síncrono, en click handler
+```
+
+### `splitSentences` — `/lib/tts.ts`
+
+Divide un párrafo en oraciones. Protege abreviaciones comunes (`Mr.`, `Dr.`, `St.`, etc.) e iniciales (`A.D.`) sustituyendo temporalmente sus puntos con un placeholder `\x00` antes de hacer el split. Cada oración incluye su puntuación terminal.
+
+```ts
+splitSentences("Mr. Smith went home. He was tired!")
+// → ["Mr. Smith went home.", "He was tired!"]
 ```
 
 ### Chat prefill desde el reader

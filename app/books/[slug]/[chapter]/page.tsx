@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getAllBooksMetadata, getBook, getChapter } from '@/lib/books'
+import { getAllBooksMetadata, getBook } from '@/lib/books'
+import ReaderView from '@/components/books/ReaderView'
 
 export async function generateStaticParams() {
   const books = await getAllBooksMetadata()
@@ -21,16 +22,25 @@ interface Props {
 export default async function ChapterPage({ params }: Props) {
   const { slug, chapter: chapterParam } = await params
   const number = parseInt(chapterParam, 10)
-  const chapter = await getChapter(slug, number)
+
+  const book = await getBook(slug)
+  if (!book) notFound()
+
+  const chapter = book.chapters.find((c) => c.number === number)
   if (!chapter) notFound()
 
+  const prevChapter = number > 1 ? number - 1 : null
+  const nextChapter = number < book.totalChapters ? number + 1 : null
+
   return (
-    <main>
-      <p>slug: {slug}</p>
-      <p>chapter: {chapter.number}</p>
-      <p>heading: {chapter.heading}</p>
-      <p>title: {chapter.title ?? '(none)'}</p>
-      <p>paragraphs: {chapter.paragraphs.length}</p>
-    </main>
+    <div className="min-h-screen bg-[#0e0e0f]">
+      <ReaderView
+        slug={slug}
+        chapter={chapter}
+        prevChapter={prevChapter}
+        nextChapter={nextChapter}
+        totalChapters={book.totalChapters}
+      />
+    </div>
   )
 }

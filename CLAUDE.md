@@ -5,8 +5,9 @@
 Web app para practicar inglés conversacional con IA. El usuario habla o escribe, un LLM responde como tutor, y la respuesta se lee en voz alta con cadencia humana.
 
 Cuatro módulos activos:
-- **Chat libre** (`/chat`): conversación abierta, sin restricciones de tema ni nivel
-- **Chat estructurado** (`/practice/[level]/[topic]`): el usuario elige nivel (A1–C2) y tema
+- **Chat libre** (`/chat`): conversación abierta con selector de nivel (A1–C1 + Adaptive). El nivel persiste en `localStorage("chat_level")` y puede cambiarse desde la topbar con confirmación
+- **Chat estructurado** (`/practice/[level]/[topic]`): el usuario elige nivel (A1–C2) y tema; la página muestra dos entradas: conversación y escritura
+- **Escritura** (`/practice/[level]/[topic]/write`): el usuario recibe un prompt escrito, envía su texto y recibe feedback estructurado (sin back-and-forth)
 - **Guías** (`/guides`): lecciones estructuradas por nivel con bloques de contenido, ejercicios y práctica de voz
 - **Libros** (`/books`): lectura de textos en inglés con TTS palabra-por-palabra y botón de práctica de conversación
 
@@ -33,11 +34,13 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
 /app
   page.tsx                        → home (grid 2×2: Free Chat, Practice, Guides, Coming soon)
   /chat
-    page.tsx                      → chat libre
+    page.tsx                      → chat libre (client component; gestiona level state + localStorage)
   /practice
     page.tsx                      → selector de nivel y tema
     /[level]/[topic]
-      page.tsx                    → chat estructurado
+      page.tsx                    → landing con dos entradas: Conversation y Writing Practice
+      /write
+        page.tsx                  → práctica de escritura (server shell → WriteView)
   /guides
     page.tsx                      → índice de niveles
     /[level]
@@ -51,9 +54,12 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
       /[chapter]
         page.tsx                  → reader page (server shell) + botón "Practice conversation"
   /api/chat
-    route.ts                      → Route Handler único para chat libre y estructurado
+    route.ts                      → Route Handler para chat libre y estructurado (streaming)
+  /api/write
+    route.ts                      → Route Handler para evaluación de escritura (non-streaming, devuelve JSON)
 /components
-  chat-interface.tsx              → componente compartido de chat
+  chat-interface.tsx              → componente compartido de chat (acepta onResetLevel para free mode)
+  level-selector.tsx              → selector de nivel para /chat (grid de cards, persiste en localStorage)
   message-bubble.tsx              → burbuja individual de mensaje
   voice-controls.tsx              → botón mic + estado de escucha
   tts-player.tsx                  → lógica de TTS con delay humano
@@ -82,14 +88,19 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
     StickyBar.tsx                 → barra inferior fija ("use client")
   /books
     ReaderView.tsx                → lector con TTS palabra-por-palabra ("use client")
+  /practice
+    PracticeEntry.tsx             → landing con dos cards: Conversation (inline) y Writing (link) ("use client")
+  /write
+    WriteView.tsx                 → 3 estados: Prompt / Loading / Feedback ("use client")
 /lib
   types.ts                        → todos los tipos del proyecto (ver sección Tipos)
   guides.ts                       → getLevel(), getChapter(), getAllLevelSlugs(), etc.
-  prompts.ts                      → buildPrompt({ mode, level?, topic? })
+  prompts.ts                      → buildPrompt({ mode, level?, topic? }) — level se usa también en free mode
   tts.ts                          → calcularDelay(text: string): number
   levels.ts                       → configuración de niveles para el chat
   topics.ts                       → configuración de temas para el chat
   books.ts                        → getAllBooksMetadata(), getBook(), getBooksByLevel(), getChapter()
+  writing-prompts.ts              → WritingPrompt type, array writingPrompts (82 prompts, A1–C2), getPromptsForTopic(level, topic)
 /content
   /guides
     /a1
@@ -505,6 +516,102 @@ Está integrado en: `VocabTable`, `ExamplesGrid`, `PillList`, `Dialogue`.
 
 ---
 
+## Módulo Escritura — arquitectura
+
+### Flujo
+
+Ciclo único sin back-and-forth: el usuario recibe un prompt → escribe → envía → recibe feedback estructurado. Puede reintentar con el mismo prompt o pedir uno nuevo.
+
+### Tipos — `/lib/writing-prompts.ts`
+
+```ts
+WritingPrompt {
+  id: string                          // "${level}-${topic}-${n}"
+  level: string                       // "A1" | "A2" | ... | "C2"
+  topic: string                       // slug del topic (coincide con topics.ts)
+  title: string                       // label corto mostrado al usuario
+  instruction: string                 // texto completo de la tarea
+  wordRange: [min, max]               // rango objetivo de palabras
+  format: 'email' | 'message' | 'opinion' | 'description' | 'story'
+  tips: string[]                      // 2-3 tips colapsables antes de escribir
+}
+```
+
+`getPromptsForTopic(level, topic)` filtra por nivel (uppercase) y topic. Devuelve array vacío si no hay prompts para esa combinación — la página devuelve `notFound()` en ese caso.
+
+Hay 2 prompts por topic por nivel (82 en total). Para agregar prompts solo tocar `/lib/writing-prompts.ts`.
+
+### API Route — `/api/write`
+
+**Non-streaming** — usa `generateText`, espera la respuesta completa y la devuelve como JSON.
+
+Recibe:
+```ts
+{ text: string, prompt: WritingPrompt, level: string, topic: string }
+```
+
+Devuelve `EvaluationResult` (exportado desde el route):
+```ts
+{
+  overall: string                     // resumen alentador en una oración
+  score: {
+    grammar: number                   // 0–10
+    vocabulary: number
+    coherence: number
+    task: number                      // ¿completó la tarea?
+  }
+  good: string[]                      // 2-3 cosas bien hechas (específicas)
+  improve: Array<{
+    original: string                  // frase exacta del texto del usuario
+    suggestion: string                // versión mejorada
+    explanation: string               // por qué es mejor
+  }>
+  rewrite: string                     // versión pulida del texto completo
+}
+```
+
+El prompt del sistema adapta idioma y número de correcciones al nivel:
+- A1/A2: explicaciones en español, máximo 1 corrección, muy alentador
+- B1/B2: explicaciones en inglés, hasta 2 correcciones
+- C1: inglés, foco en registro y precisión, hasta 3 correcciones
+
+Si el LLM devuelve JSON envuelto en markdown fences (` ```json `), se extrae antes de parsear. Si el parse falla, el route devuelve `{ error, raw }` con status 500.
+
+### WriteView — `components/write/WriteView.tsx`
+
+Tres estados en un solo componente cliente:
+
+**STATE 1 — PROMPT**
+- Badge de formato con color por tipo (email=azul, message=teal, opinion=ámbar, description=morado, story=rosa)
+- Badge del rango de palabras
+- Botón "New prompt ↺" (cicla por los prompts del topic en orden)
+- Texto de instrucción
+- Panel de tips colapsable
+- Textarea autoexpandible (height se ajusta via `el.style.height = el.scrollHeight + "px"` en cada change)
+- Contador de palabras con colores: gris si vacío, verde si en rango, rojo si fuera de rango
+- Botón Submit deshabilitado hasta que el word count esté dentro del rango
+
+**STATE 2 — LOADING**
+- Tres puntos con animación bounce escalonada
+- Texto "Analysing your writing…"
+
+**STATE 3 — FEEDBACK**
+- `overall`: párrafo grande
+- 4 pills de score (Grammar / Vocabulary / Coherence / Task) — verde ≥8, ámbar 5–7, rojo ≤4
+- Dos columnas: "What you did well" (cards con borde verde) | "What to improve" (original → suggestion + explanation)
+- Panel colapsable "See a polished version" con el `rewrite` y nota "Use this as a reference, not a copy"
+- Tres botones: "Try again — same prompt" / "New prompt" / "Back to practice"
+
+Word count: `text.trim().split(/\s+/).filter(Boolean).length` — solo palabras no vacías.
+
+### Entrada desde `/practice/[level]/[topic]`
+
+La página del topic ya no monta `ChatInterface` directamente. Renderiza `PracticeEntry` (client component) que muestra dos cards:
+- **💬 Conversation** → monta `ChatInterface` inline (sin cambio de URL)
+- **✍️ Writing Practice** → `<Link>` a `/practice/[level]/[topic]/write`
+
+---
+
 ## API Route — `/api/chat`
 
 Único endpoint para chat libre y estructurado. Recibe:
@@ -513,8 +620,8 @@ Está integrado en: `VocabTable`, `ExamplesGrid`, `PillList`, `Dialogue`.
 {
   messages: Message[],
   mode: "free" | "practice",
-  level?: string,
-  topic?: string,
+  level?: string,   // free: "A1"|"A2"|"B1"|"B2"|"C1"|"C2"|"adaptive" — practice: "A1"–"C2"
+  topic?: string,   // solo requerido en practice mode
 }
 ```
 
@@ -536,15 +643,36 @@ const contextMessages = messages.slice(-20)
 
 ## System prompts — `lib/prompts.ts`
 
-### Chat libre
-```ts
-`You are a friendly English tutor and conversation partner.
-Be natural, warm, and encouraging. Correct grammar mistakes
-gently and naturally within your response, not as a separate note.
-Keep responses conversational — 2 to 4 sentences max.`
-```
+### Chat libre (free mode)
 
-### Chat estructurado
+El nivel se recibe del cliente (guardado en `localStorage("chat_level")`). Valores válidos: `A1`, `A2`, `B1`, `B2`, `C1`, `C2`, `adaptive`. Si no se pasa nivel, default es B1.
+
+El prompt combina tres bloques:
+
+**1. Persona por nivel (`PERSONA_BY_LEVEL`)**
+- A1/A2: habla simple, oraciones cortas, muy alentador y paciente
+- B1/B2: habla natural, engage con las ideas del usuario
+- C1/C2: igual intelectual, vocabulario sofisticado, desafía ideas ocasionalmente
+- `adaptive`: arranca en B1, adapta complejidad según lo que escribe el usuario sin mencionarlo
+
+**2. Comportamiento de corrección (`CORRECTION_BY_LEVEL`)**
+- A1/A2: solo corrige errores que causen malentendidos; lo hace repitiendo la forma correcta de forma natural, sin señalarlo
+- B1/B2: siempre corrige errores gramaticales y colocaciones; bloque explícito después de la respuesta:
+  ```
+  ---
+  💡 "[frase del usuario]" → "[versión corregida]"
+  Why: [una oración en inglés simple]
+  ```
+- C1/C2: corrige registro, imprecisión y frases no naturales; mismo formato de bloque, más matiz; puede agregar "Native speakers might also say: [alternativa]"
+- `adaptive`: usa comportamiento B1 mientras adapta el nivel
+
+**3. Reglas universales (`CORRECTION_RULES_ALL`)** — aplican a todos los niveles:
+- Máximo una corrección por mensaje
+- No corregir el mismo tipo de error dos veces seguidas
+- El bloque de corrección siempre va al final, nunca embebido en la respuesta
+- No agregar el bloque si el mensaje no tiene errores
+
+### Chat estructurado (practice mode)
 ```ts
 function buildPrompt({ level, topic }) {
   const levelConfig = levels[level]
@@ -552,7 +680,9 @@ function buildPrompt({ level, topic }) {
   return `${levelConfig.instructions}
 Topic: ${topicConfig.description}
 Vocabulary to use naturally: ${topicConfig.vocabulary.join(", ")}
-${levelConfig.correctionStyle}`
+
+${CORRECTION_BY_LEVEL[level]}
+${CORRECTION_RULES_ALL}`
 }
 ```
 

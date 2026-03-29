@@ -1,9 +1,11 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getAllLevelSlugs, getAllChapterSlugs, getChapter, getLevel } from '@/lib/guides'
 import { getBooksByLevel } from '@/lib/books'
 import BlockRenderer from '@/components/blocks/BlockRenderer'
 import StickyBar from '@/components/guides/StickyBar'
+import Link from 'next/link'
+import PageWrapper from '@/components/ui/page-wrapper'
+import { BackButton } from '@/components/ui/back-button'
 
 export function generateStaticParams() {
   const params: { level: string; chapter: string }[] = []
@@ -34,27 +36,22 @@ export default async function ChapterPage({ params }: Props) {
 
   return (
     <>
-      <main
-        className={`min-h-screen bg-[#0e0e0f] px-6 py-12 ${practiceRoute ? 'pb-32' : ''}`}
-        data-notebook-source={`${badge} ${chapter.title}`}
-        data-notebook-level={levelSlug}
-      >
-        <div className="max-w-3xl mx-auto">
+      <PageWrapper>
+        <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618] px-4 py-3">
+          <BackButton label={level.label} href={`/guides/${levelSlug}`} />
+        </header>
 
-          {/* Back */}
-          <Link
-            href={`/guides/${levelSlug}`}
-            className="inline-flex items-center gap-1.5 text-[#888] text-sm hover:text-white transition-colors mb-10"
-          >
-            ← {level.label}
-          </Link>
-
+        <div
+          className={`flex-1 px-6 py-10 ${practiceRoute ? 'pb-32' : ''}`}
+          data-notebook-source={`${badge} ${chapter.title}`}
+          data-notebook-level={levelSlug}
+        >
           {/* Header */}
           <div className="mb-10">
             <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-[#C41A1A] bg-[#C41A1A]/10 rounded-full px-3 py-1 mb-3">
               {badge}
             </span>
-            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+            <h1 className="text-3xl font-bold text-white tracking-tight mb-3">
               {chapter.title}
             </h1>
             <p className="text-[#888] text-base">{chapter.description}</p>
@@ -128,7 +125,7 @@ export default async function ChapterPage({ params }: Props) {
             </div>
           )}
         </div>
-      </main>
+      </PageWrapper>
 
       {practiceRoute && (
         <StickyBar levelSlug={levelSlug} practiceRoute={practiceRoute} />

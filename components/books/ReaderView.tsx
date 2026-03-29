@@ -3,6 +3,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import type { BookChapter } from '@/lib/types'
+import { BackButton } from '@/components/ui/back-button'
 import { splitSentences } from '@/lib/tts'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
   prevChapter: number | null
   nextChapter: number | null
   totalChapters: number
+  bookTitle: string
 }
 
 type Speed = 0.75 | 1 | 1.25 | 1.5
@@ -40,7 +42,7 @@ function findWordIdx(spans: WordSpan[], charIndex: number): number {
   return idx
 }
 
-export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: Props) {
+export default function ReaderView({ slug, chapter, prevChapter, nextChapter, bookTitle }: Props) {
   const [activePara, setActivePara] = useState<number | null>(null)
   const [activeSentence, setActiveSentence] = useState<number | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -263,12 +265,7 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
       {/* Topbar */}
       <header className="sticky top-0 z-10 bg-[#0e0e0f]/95 backdrop-blur border-b border-[#2a2a2e]">
         <div className="max-w-[680px] mx-auto px-6 h-14 flex items-center gap-3">
-          <Link
-            href={`/books/${slug}`}
-            className="text-[#888] hover:text-white transition-colors text-sm shrink-0 pr-1"
-          >
-            ←
-          </Link>
+          <BackButton label={bookTitle} href={`/books/${slug}`} />
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate leading-tight">

@@ -892,6 +892,8 @@ Estados: `front` (solo la palabra) → `back` (contexto + traducción + 4 botone
 
 Keyboard shortcuts: `Space`/`→` para revelar, `1`–`4` para calidad.
 
+`useSearchParams()` requiere `<Suspense>`. Patrón usado: el componente interno se llama `ReviewSession` y el default export `ReviewPage` lo envuelve en `<Suspense fallback={...}>`. Aplica a cualquier página que use `useSearchParams` en el App Router.
+
 ### NotebookNavCard — `components/notebook/notebook-nav-card.tsx`
 
 Card del home (`app/page.tsx`). Client component que lee `getStats().dueToday` en `useEffect` y muestra un badge rojo con el número si hay palabras pendientes.

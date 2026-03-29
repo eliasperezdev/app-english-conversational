@@ -378,7 +378,7 @@ export function WriteView({ prompts, level, topic }: WriteViewProps) {
   )
 
   return (
-    <div className="min-h-screen bg-[#0e0e0f] px-4 py-10">
+    <div className="flex-1 px-4 py-10">
       {error && (
         <div className="max-w-2xl mx-auto mb-6 p-3 rounded-lg bg-red-950/40 border border-red-800/50 text-red-300 text-sm">
           {error}

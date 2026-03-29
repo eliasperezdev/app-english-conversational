@@ -56,7 +56,7 @@ export function LevelSelector({ onSelect }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
 
   return (
-    <div className="flex flex-col h-dvh bg-[#0e0e0f] items-center justify-center px-4 py-8">
+    <div className="flex flex-col flex-1 items-center justify-center px-4 py-8">
       <div className="w-full max-w-lg">
         <h1 className="text-white text-2xl font-semibold text-center mb-2">
           Choose your level

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   getEntries,
@@ -35,7 +35,7 @@ function nextReviewLabel(ts: number): string {
   return `In ${days} days`
 }
 
-function highlightWord(context: string, word: string): JSX.Element {
+function highlightWord(context: string, word: string): React.ReactElement {
   const idx = context.toLowerCase().indexOf(word.toLowerCase())
   if (idx === -1) return <span>{context}</span>
   return (

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { ChatInterface } from "@/components/chat-interface"
+import { PracticeEntry } from "@/components/practice/PracticeEntry"
 import { levels } from "@/lib/levels"
 import { topics } from "@/lib/topics"
 
@@ -12,5 +12,13 @@ export default async function PracticeSessionPage({ params }: Props) {
   const levelKey = level.toUpperCase()
   if (!levels[levelKey] || !topics[topic]) notFound()
 
-  return <ChatInterface mode="practice" level={levelKey} topic={topic} />
+  return (
+    <PracticeEntry
+      level={level}
+      levelKey={levelKey}
+      topic={topic}
+      levelConfig={levels[levelKey]}
+      topicConfig={topics[topic]}
+    />
+  )
 }

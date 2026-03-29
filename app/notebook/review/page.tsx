@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getEntries, getDueEntries, updateReview, type NotebookEntry } from '@/lib/notebook'
@@ -78,7 +78,7 @@ const QUALITY_BUTTONS: {
   },
 ]
 
-export default function ReviewPage() {
+function ReviewSession() {
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') === 'all' ? 'all' : 'due'
 
@@ -298,5 +298,13 @@ export default function ReviewPage() {
         )}
       </div>
     </main>
+  )
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#0e0e0f]" />}>
+      <ReviewSession />
+    </Suspense>
   )
 }

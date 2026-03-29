@@ -105,7 +105,8 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
     /b2, /c1, /c2  ← futuros
   /books
     bulfinch-mythology.ts         → Book (export default)
-    tom-sawyer.ts                 → Book (export default)
+    alice-in-wonderland.ts        → Book (export default)
+    war-of-the-worlds.ts          → Book (export default)
 ```
 
 ---
@@ -134,8 +135,9 @@ Usa el mismo patrón de registry que `/lib/guides.ts`:
 
 ```ts
 const BOOK_IMPORTS: Record<string, () => Promise<{ default: Book }>> = {
-  'bulfinch-mythology': () => import('@/content/books/bulfinch-mythology'),
-  'tom-sawyer':         () => import('@/content/books/tom-sawyer'),
+  'bulfinch-mythology':  () => import('@/content/books/bulfinch-mythology'),
+  'alice-in-wonderland': () => import('@/content/books/alice-in-wonderland'),
+  'war-of-the-worlds':   () => import('@/content/books/war-of-the-worlds'),
 }
 ```
 
@@ -280,9 +282,10 @@ En `/lib/books.ts`, añadir al objeto `BOOK_IMPORTS`:
 
 ```ts
 const BOOK_IMPORTS: Record<string, () => Promise<{ default: Book }>> = {
-  'bulfinch-mythology': () => import('@/content/books/bulfinch-mythology'),
-  'tom-sawyer':         () => import('@/content/books/tom-sawyer'),
-  'my-book-slug':       () => import('@/content/books/my-book-slug'),  // ← agregar
+  'bulfinch-mythology':  () => import('@/content/books/bulfinch-mythology'),
+  'alice-in-wonderland': () => import('@/content/books/alice-in-wonderland'),
+  'war-of-the-worlds':   () => import('@/content/books/war-of-the-worlds'),
+  'my-book-slug':        () => import('@/content/books/my-book-slug'),  // ← agregar
 }
 ```
 

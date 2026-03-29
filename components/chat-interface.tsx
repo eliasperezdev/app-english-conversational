@@ -17,6 +17,7 @@ interface Props {
   level?: string
   topic?: string
   prefill?: string
+  onResetLevel?: () => void
 }
 
 function getTextFromLastAssistantMessage(
@@ -32,12 +33,13 @@ function getTextFromLastAssistantMessage(
   )
 }
 
-export function ChatInterface({ mode, level, topic, prefill }: Props) {
+export function ChatInterface({ mode, level, topic, prefill, onResetLevel }: Props) {
   const [input, setInput] = useState(prefill ?? "")
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [pendingTts, setPendingTts] = useState<{ text: string; id: number } | null>(null)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
   const ttsIdRef = useRef(0)
   const lastQueuedMsgIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -116,28 +118,66 @@ export function ChatInterface({ mode, level, topic, prefill }: Props) {
 
   void levelConfig
 
+  const freeLevelBadge = mode === "free" && level
+    ? (level === "adaptive" ? "Auto" : level)
+    : null
+
   return (
     <div className="flex flex-col h-dvh bg-[#0e0e0f] text-[#d0d0d5]">
       {/* Topbar */}
-      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-[#2a2a2e] bg-[#161618]">
-        <div className="flex items-center gap-3">
-          <Link
-            href={backHref}
-            className="text-[#888] hover:text-[#d0d0d5] transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-          </Link>
-          <span className="px-2.5 py-0.5 rounded-full bg-[#C41A1A] text-white text-xs md:text-sm font-semibold uppercase tracking-wide">
-            {badgeLabel}
-          </span>
-          {level && (
-            <span className="text-xs md:text-sm text-[#888] font-medium">{level}</span>
-          )}
+      <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618]">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href={backHref}
+              className="text-[#888] hover:text-[#d0d0d5] transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+            </Link>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#C41A1A] text-white text-xs md:text-sm font-semibold uppercase tracking-wide">
+              {badgeLabel}
+            </span>
+            {mode === "practice" && level && (
+              <span className="text-xs md:text-sm text-[#888] font-medium">{level}</span>
+            )}
+            {freeLevelBadge && onResetLevel && (
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm((v) => !v)}
+                className="px-2 py-0.5 rounded-full border border-[#2a2a2e] text-[#888] text-xs font-medium hover:border-[#555] hover:text-[#d0d0d5] transition-colors cursor-pointer"
+              >
+                {freeLevelBadge}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#C41A1A]" />
+            <span className="text-xs md:text-sm text-[#888]">live</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#C41A1A]" />
-          <span className="text-xs md:text-sm text-[#888]">live</span>
-        </div>
+
+        {/* Reset level confirmation */}
+        {showResetConfirm && (
+          <div className="px-4 md:px-6 pb-3 flex items-center gap-3">
+            <span className="text-xs text-[#888] flex-1">
+              Change level? This will clear the current conversation.
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(false)}
+              className="text-xs text-[#888] hover:text-[#d0d0d5] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowResetConfirm(false); onResetLevel?.() }}
+              className="text-xs text-[#C41A1A] hover:text-[#e02020] font-medium transition-colors cursor-pointer"
+            >
+              Confirm
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Messages */}

@@ -37,7 +37,11 @@ export default async function ChapterPage({ params }: Props) {
   const prefill = encodeURIComponent(`I just read about ${subject} from ${book.title}. Can we talk about it?`)
 
   return (
-    <div className="min-h-screen bg-[#0e0e0f]">
+    <div
+      className="min-h-screen bg-[#0e0e0f]"
+      data-notebook-source={`${book.title}, Ch.${number}`}
+      data-notebook-level={book.level}
+    >
       <ReaderView
         slug={slug}
         chapter={chapter}

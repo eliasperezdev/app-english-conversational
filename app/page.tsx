@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { MessageCircle, BookOpen, GraduationCap, Library } from "lucide-react"
+import { NotebookNavCard } from "@/components/notebook/notebook-nav-card"
 
 export default function Home() {
   return (
@@ -69,15 +70,7 @@ export default function Home() {
           </div>
         </Link>
 
-        <div className="flex flex-col items-center gap-4 bg-[#161618] border border-[#2a2a2e] rounded-2xl p-7 md:p-9 opacity-30 cursor-not-allowed">
-          <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-[#2a2a2e] flex items-center justify-center">
-            <span className="text-xl">🔜</span>
-          </div>
-          <div className="text-center">
-            <div className="text-base md:text-lg font-semibold text-white">Coming soon</div>
-            <div className="text-[13px] md:text-[15px] text-[#888] mt-1">New module</div>
-          </div>
-        </div>
+        <NotebookNavCard />
       </div>
     </main>
   )

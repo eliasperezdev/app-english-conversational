@@ -4,14 +4,13 @@
 
 Web app para practicar inglés conversacional con IA. El usuario habla o escribe, un LLM responde como tutor, y la respuesta se lee en voz alta con cadencia humana.
 
-Cuatro módulos activos:
+Cinco módulos activos:
 - **Chat libre** (`/chat`): conversación abierta con selector de nivel (A1–C1 + Adaptive). El nivel persiste en `localStorage("chat_level")` y puede cambiarse desde la topbar con confirmación
 - **Chat estructurado** (`/practice/[level]/[topic]`): el usuario elige nivel (A1–C2) y tema; la página muestra dos entradas: conversación y escritura
 - **Escritura** (`/practice/[level]/[topic]/write`): el usuario recibe un prompt escrito, envía su texto y recibe feedback estructurado (sin back-and-forth)
 - **Guías** (`/guides`): lecciones estructuradas por nivel con bloques de contenido, ejercicios y práctica de voz
-- **Libros** (`/books`): lectura de textos en inglés con TTS palabra-por-palabra y botón de práctica de conversación
-
-Un quinto módulo está planificado pero **no ha comenzado**. No crear ni tocar hasta que esté indicado.
+- **Libros** (`/books`): lectura de textos en inglés con TTS y highlight palabra-por-palabra, botón de práctica de conversación
+- **Notebook** (`/notebook`): vocabulario guardado por el usuario con repaso mediante spaced repetition (SM-2)
 
 ---
 
@@ -32,7 +31,7 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
 
 ```
 /app
-  page.tsx                        → home (grid 2×2: Free Chat, Practice, Guides, Coming soon)
+  page.tsx                        → home (grid 2×3: Free Chat, Practice, Guides, Books, Notebook + Coming soon)
   /chat
     page.tsx                      → chat libre (client component; gestiona level state + localStorage)
   /practice
@@ -53,6 +52,10 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
       page.tsx                    → detalle del libro con lista de capítulos
       /[chapter]
         page.tsx                  → reader page (server shell) + botón "Practice conversation"
+  /notebook
+    page.tsx                      → índice del notebook (client component)
+    /review
+      page.tsx                    → sesión de repaso SM-2 (client component)
   /api/chat
     route.ts                      → Route Handler para chat libre y estructurado (streaming)
   /api/write
@@ -87,7 +90,10 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
   /guides
     StickyBar.tsx                 → barra inferior fija ("use client")
   /books
-    ReaderView.tsx                → lector con TTS palabra-por-palabra ("use client")
+    ReaderView.tsx                → lector con TTS y highlight palabra-por-palabra ("use client")
+  /notebook
+    save-word-popup.tsx           → popup flotante global para guardar palabras ("use client")
+    notebook-nav-card.tsx         → card del home con badge de palabras pendientes ("use client")
   /practice
     PracticeEntry.tsx             → landing con dos cards: Conversation (inline) y Writing (link) ("use client")
   /write
@@ -101,6 +107,7 @@ LLM: **Google Gemini** vía `@ai-sdk/google`. Configurar en `.env.local`. Modelo
   topics.ts                       → configuración de temas para el chat
   books.ts                        → getAllBooksMetadata(), getBook(), getBooksByLevel(), getChapter()
   writing-prompts.ts              → WritingPrompt type, array writingPrompts (82 prompts, A1–C2), getPromptsForTopic(level, topic)
+  notebook.ts                     → todas las operaciones del notebook (localStorage), algoritmo SM-2
 /content
   /guides
     /a1
@@ -185,7 +192,7 @@ export default book
 
 Componente cliente que maneja TTS con:
 - **Cola a nivel de oración** — cada párrafo se divide en oraciones via `splitSentences()` (`/lib/tts.ts`); cada oración es su propio `SpeechSynthesisUtterance`
-- **Highlight palabra a palabra** via `onboundary` + DOM directo (sin re-renders de React)
+- **Highlight palabra a palabra** via `onboundary` + DOM directo (sin re-renders de React). Fallback timing-based si `onboundary` no dispara (varía por browser/voz)
 - **Auto-advance** oración → oración → párrafo siguiente (`onend` avanza oración; al agotar las oraciones del párrafo, pasa al siguiente)
 - **Velocidades**: 0.75×, 1×, 1.25×, 1.5× — aplicables en caliente (reinicia desde la oración activa)
 - **Barra de progreso** proporcional al párrafo activo; indicador `S X / Y` en el player bar para párrafos con más de una oración
@@ -193,21 +200,57 @@ Componente cliente que maneja TTS con:
 
 ### Arquitectura de índices `data-wi`
 
-Los spans de palabras usan índices **paragraph-global** en `data-wi`, aunque el utterance solo habla una oración. Esto permite que `onboundary` (cuyo `charIndex` es relativo a la oración) resuelva el elemento DOM correcto:
+Los spans de palabras usan índices **paragraph-global** en `data-wi`. Todos los spans del párrafo activo se renderizan en el DOM al activar el párrafo (no solo los de la oración activa). Esto evita race conditions donde `onboundary` dispara antes de que React haya re-renderizado la oración activa.
 
 ```ts
-// En speakSentence:
-let wordOffset = 0
-for (let i = 0; i < sentenceIdx; i++) {
-  wordOffset += buildWordSpans(sentences[i]).length  // palabras antes de esta oración
+// Precomputar spans+offsets para TODAS las oraciones del párrafo activo:
+const allWordSpans: WordSpan[][] = []
+const sentWordOffsets: number[] = []
+for (const sent of sentences) {
+  const ws = buildWordSpans(sent)
+  sentWordOffsets.push(offset)
+  allWordSpans.push(ws)
+  offset += ws.length
 }
 // En onboundary:
 const localIdx = findWordIdx(wordSpansRef.current, event.charIndex)
 const globalIdx = wordOffsetRef.current + localIdx
-paraEl.querySelector(`[data-wi="${globalIdx}"]`)     // busca en el DOM del párrafo completo
+paraEl.querySelector(`[data-wi="${globalIdx}"]`)
 ```
 
-En el render, cada oración activa emite `data-wi={sentOffset + wi}` para que coincida.
+### Highlight — dos mecanismos en paralelo
+
+**Primario — `onboundary`**: preciso, dispara por palabra durante el utterance. Cuando dispara, cancela los timers del fallback y se hace cargo.
+
+**Fallback — timing**: se activa en `utterance.onstart`. Estima la duración de cada palabra basándose en ~12 chars/segundo × rate y programa `setTimeout`s para cada palabra. Si `onboundary` nunca dispara (depende del browser y la voz instalada), el fallback provee highlight aproximado. Brave/Chrome desktop soportan `onboundary` correctamente.
+
+```ts
+// En speakSentence:
+usingBoundaryRef.current = false
+
+utterance.onboundary = (event) => {
+  if (event.name !== 'word') return
+  if (!usingBoundaryRef.current) {
+    usingBoundaryRef.current = true
+    wordTimersRef.current.forEach(clearTimeout)  // cancel fallback
+    wordTimersRef.current = []
+  }
+  applyWordHighlight(paraIdx, wordOffsetRef.current + localIdx)
+}
+
+utterance.onstart = () => {
+  // schedule timing-based fallback (~12 chars/sec × rate)
+  spans.forEach((ws, i) => {
+    const id = setTimeout(() => {
+      if (usingBoundaryRef.current) return  // onboundary took over
+      applyWordHighlight(paraIdx, wordOffsetRef.current + i)
+    }, delay)
+    wordTimersRef.current.push(id)
+  })
+}
+```
+
+Estilo del highlight activo: `background rgba(196,26,26,0.55)`, `color white`, `padding 0 2px`, `borderRadius 3px`. Transición CSS `0.12s` en cada span para suavizar.
 
 **Notas críticas de TTS en mobile (Android Chrome):**
 - Llamar `window.speechSynthesis.getVoices()` en `useEffect([], [])` para precargar voces — sin esto la primera reproducción puede fallar en silencio
@@ -745,6 +788,113 @@ C2: { label: "Mastery",       instructions: "Full native register.", correctionS
 Temas actuales: `shopping`, `travel`, `restaurant`, `work`, `health`.
 
 Para agregar un tema: añadir entrada al objeto `topics` en `lib/topics.ts`. No tocar ninguna otra parte del sistema.
+
+---
+
+## Módulo Notebook — arquitectura
+
+### Descripción
+
+El usuario selecciona cualquier texto en la app y lo guarda en un notebook personal. Las palabras se repasan con spaced repetition (algoritmo SM-2). Todo vive en `localStorage`, sin backend.
+
+### Tipo principal — `/lib/notebook.ts`
+
+```ts
+type NotebookEntry = {
+  id: string                    // crypto.randomUUID()
+  word: string                  // palabra o frase corta seleccionada
+  context: string               // oración completa donde apareció
+  translation: string | null    // añadida por el usuario después
+  source: {
+    type: 'guide' | 'book' | 'chat'
+    label: string               // "C1 Vocabulary" / "Alice in Wonderland, Ch.3" / "Free chat"
+    url: string                 // link de vuelta al origen
+  }
+  level: string                 // "b1", "c1", etc.
+  savedAt: number               // Date.now()
+  review: {
+    interval: number            // días hasta el próximo repaso
+    nextReview: number          // timestamp
+    easeFactor: number          // empieza en 2.5 (SM-2)
+    repetitions: number         // veces repasada
+  }
+}
+```
+
+### API de `/lib/notebook.ts`
+
+```ts
+getEntries(): NotebookEntry[]
+saveEntry(entry: Omit<NotebookEntry, 'id' | 'savedAt' | 'review'>): NotebookEntry
+deleteEntry(id: string): void
+updateTranslation(id: string, translation: string): void
+updateReview(id: string, quality: 0 | 1 | 2 | 3): void
+getDueEntries(): NotebookEntry[]   // nextReview <= Date.now()
+getStats(): { total, dueToday, streak }
+```
+
+`quality`: 0=blackout, 1=wrong, 2=hard, 3=easy.
+
+### Algoritmo SM-2 en `updateReview`
+
+```ts
+if (quality < 2) {
+  interval = 1; repetitions = 0
+} else {
+  if (repetitions === 0) interval = 1
+  else if (repetitions === 1) interval = 6
+  else interval = Math.round(interval * easeFactor)
+  easeFactor = Math.max(1.3, easeFactor + 0.1 - (3-quality)*(0.08 + (3-quality)*0.02))
+  repetitions++
+}
+nextReview = Date.now() + interval * 86_400_000
+```
+
+Streak: se actualiza con cada `updateReview`. Se guarda en `localStorage("notebook_streak")` como `{ lastDate: string, count: number }`.
+
+### Save Word Popup — `components/notebook/save-word-popup.tsx`
+
+Componente global (`"use client"`) montado en `app/layout.tsx`. Escucha `document.addEventListener('selectionchange')` con debounce de 350ms.
+
+Condiciones para mostrar el popup:
+- Selección de 1–6 palabras
+- No está dentro de `textarea`, `input` o `[contenteditable]`
+
+Posición: `getBoundingClientRect()` de la selección. Aparece arriba si hay espacio, abajo si está cerca del top. En mobile (`< 640px`) aparece como bottom sheet.
+
+Inferencia del source desde el DOM:
+```ts
+// Pages add these data attributes to their main container:
+data-notebook-source="C1 Vocabulary"   // label del source
+data-notebook-level="c1"               // level slug
+
+// Popup reads them:
+document.querySelector('[data-notebook-source]')?.dataset.notebookSource
+```
+
+Páginas que tienen estos atributos:
+- `app/guides/[level]/[chapter]/page.tsx` → `<main data-notebook-source="{BADGE} {chapter.title}" data-notebook-level={levelSlug}>`
+- `app/books/[slug]/[chapter]/page.tsx` → `<div data-notebook-source="{book.title}, Ch.{number}" data-notebook-level={book.level}>`
+
+Para `/chat` y `/practice/...` se infiere del `window.location.pathname` directamente (no necesitan data attributes).
+
+### Notebook Index — `/app/notebook/page.tsx`
+
+Client component. Filtros: source (All/Guides/Books/Chat), level (All/A1…C2), sort (Newest/Oldest/Due first). Cada entrada es una card expandible con:
+- Palabra, contexto con highlight en rojo, badges de source y level, fecha relativa
+- Al expandir: campo de traducción editable, link "Go to source", historial de repaso
+
+### Review Session — `/app/notebook/review/page.tsx`
+
+Client component. Query param `?mode=due` (default) o `?mode=all`. Deck shuffleado al montar.
+
+Estados: `front` (solo la palabra) → `back` (contexto + traducción + 4 botones de calidad) → siguiente carta → `complete` (stats + next review date).
+
+Keyboard shortcuts: `Space`/`→` para revelar, `1`–`4` para calidad.
+
+### NotebookNavCard — `components/notebook/notebook-nav-card.tsx`
+
+Card del home (`app/page.tsx`). Client component que lee `getStats().dueToday` en `useEffect` y muestra un badge rojo con el número si hay palabras pendientes.
 
 ---
 

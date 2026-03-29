@@ -50,28 +50,50 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
   const isPlayingRef = useRef(false)
   const activeParaIdxRef = useRef<number | null>(null)
   const activeSentenceIdxRef = useRef<number | null>(null)
-  const sentencesRef = useRef<string[]>([])         // sentences of the active paragraph
-  const wordOffsetRef = useRef<number>(0)            // paragraph-global word index where active sentence starts
+  const sentencesRef = useRef<string[]>([])
+  const wordOffsetRef = useRef<number>(0)
   const speedRef = useRef<Speed>(1)
   const wordSpansRef = useRef<WordSpan[]>([])
   const activeWordElRef = useRef<HTMLElement | null>(null)
   const paraRefs = useRef<(HTMLParagraphElement | null)[]>([])
   const speakSentenceRef = useRef<((paraIdx: number, sentenceIdx: number, rate: Speed) => void) | null>(null)
 
+  // Timing-based highlight fallback
+  const wordTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  // Set to true once onboundary fires — timing fallback will stand down
+  const usingBoundaryRef = useRef(false)
+
   const clearWordHighlight = useCallback(() => {
     if (activeWordElRef.current) {
       activeWordElRef.current.style.backgroundColor = ''
       activeWordElRef.current.style.borderRadius = ''
+      activeWordElRef.current.style.color = ''
+      activeWordElRef.current.style.padding = ''
       activeWordElRef.current = null
+    }
+    // Also cancel any pending timing-based timers
+    wordTimersRef.current.forEach(clearTimeout)
+    wordTimersRef.current = []
+  }, [])
+
+  const applyWordHighlight = useCallback((paraIdx: number, globalIdx: number) => {
+    const paraEl = paraRefs.current[paraIdx]
+    const el = paraEl?.querySelector<HTMLElement>(`[data-wi="${globalIdx}"]`)
+    if (el) {
+      el.style.backgroundColor = 'rgba(196, 26, 26, 0.55)'
+      el.style.borderRadius = '3px'
+      el.style.color = '#ffffff'
+      el.style.padding = '0 2px'
+      activeWordElRef.current = el
     }
   }, [])
 
   const speakSentence = useCallback((paraIdx: number, sentenceIdx: number, rate: Speed) => {
     window.speechSynthesis.cancel()
     // Android Chrome bug: cancel() can leave synthesis in a paused state.
-    // resume() ensures it's active before speak().
     window.speechSynthesis.resume()
     clearWordHighlight()
+    usingBoundaryRef.current = false
 
     const paraText = chapter.paragraphs[paraIdx]
     if (!paraText) return
@@ -89,7 +111,6 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     }
     wordOffsetRef.current = wordOffset
 
-    // Word spans are sentence-local; charIndex from onboundary is also sentence-local
     const spans = buildWordSpans(text)
     wordSpansRef.current = spans
 
@@ -100,19 +121,39 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     utterance.lang = 'en-US'
     utterance.rate = rate
 
+    // PRIMARY: onboundary gives perfect per-word sync when supported
     utterance.onboundary = (event) => {
       if (event.name !== 'word') return
-      // sentence-local word index → paragraph-global data-wi
+      if (!usingBoundaryRef.current) {
+        // onboundary is working — cancel all timing timers
+        usingBoundaryRef.current = true
+        wordTimersRef.current.forEach(clearTimeout)
+        wordTimersRef.current = []
+      }
       const localIdx = findWordIdx(wordSpansRef.current, event.charIndex)
       const globalIdx = wordOffsetRef.current + localIdx
       clearWordHighlight()
-      const paraEl = paraRefs.current[paraIdx]
-      const el = paraEl?.querySelector<HTMLElement>(`[data-wi="${globalIdx}"]`)
-      if (el) {
-        el.style.backgroundColor = 'rgba(196, 26, 26, 0.25)'
-        el.style.borderRadius = '2px'
-        activeWordElRef.current = el
-      }
+      applyWordHighlight(paraIdx, globalIdx)
+    }
+
+    // FALLBACK: timing-based highlight for browsers where onboundary doesn't fire.
+    // ~12 chars/second at 1x rate is a reasonable estimate for English TTS.
+    utterance.onstart = () => {
+      const CHARS_PER_SEC = 12 * rate
+      let cumulativeDelay = 250 // initial TTS startup latency
+
+      spans.forEach((ws, i) => {
+        const wordMs = ((ws.word.length + 1) / CHARS_PER_SEC) * 1000
+        const delay = cumulativeDelay
+        cumulativeDelay += wordMs
+
+        const id = setTimeout(() => {
+          if (usingBoundaryRef.current) return // onboundary took over
+          clearWordHighlight()
+          applyWordHighlight(paraIdx, wordOffsetRef.current + i)
+        }, delay)
+        wordTimersRef.current.push(id)
+      })
     }
 
     utterance.onend = () => {
@@ -121,10 +162,8 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
 
       const nextSentence = sentenceIdx + 1
       if (nextSentence < sentencesRef.current.length) {
-        // Advance to next sentence in the same paragraph
         speakSentenceRef.current?.(paraIdx, nextSentence, speedRef.current)
       } else {
-        // Paragraph exhausted — advance to next paragraph
         const nextPara = paraIdx + 1
         if (nextPara < chapter.paragraphs.length) {
           setActivePara(nextPara)
@@ -139,7 +178,6 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     }
 
     utterance.onerror = (event) => {
-      // 'interrupted' and 'canceled' fire when cancel() is called — not real errors
       if (event.error === 'interrupted' || event.error === 'canceled') return
       clearWordHighlight()
       setIsPlaying(false)
@@ -147,7 +185,7 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
     }
 
     window.speechSynthesis.speak(utterance)
-  }, [chapter.paragraphs, clearWordHighlight])
+  }, [chapter.paragraphs, clearWordHighlight, applyWordHighlight])
 
   // Keep speakSentenceRef current so onend can call the latest version
   useEffect(() => {
@@ -274,13 +312,18 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
           const isActivePara = activePara === idx
           const sentences = isActivePara ? splitSentences(para) : null
 
-          // Precompute paragraph-global word offset for each sentence
+          // Precompute word spans + offsets for all sentences in the active paragraph.
+          // Doing this upfront (not per-sentence) ensures data-wi spans are in the DOM
+          // as soon as the paragraph is active, avoiding a race with onboundary.
+          const allWordSpans: WordSpan[][] = []
           const sentWordOffsets: number[] = []
           if (sentences) {
             let offset = 0
             for (const sent of sentences) {
+              const ws = buildWordSpans(sent)
               sentWordOffsets.push(offset)
-              offset += buildWordSpans(sent).length
+              allWordSpans.push(ws)
+              offset += ws.length
             }
           }
 
@@ -290,17 +333,17 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
               ref={(el) => { paraRefs.current[idx] = el }}
               onClick={() => handleParaClick(idx)}
               className={[
-                'text-[#d0d0d5] text-[17px] leading-[1.85] mb-6 cursor-pointer rounded-lg px-3 py-1 -mx-3 transition-colors select-none',
+                'text-[#d0d0d5] text-[17px] leading-[1.85] mb-6 cursor-pointer rounded-lg px-3 py-1 -mx-3 transition-colors',
                 isActivePara
                   ? 'border-l-2 border-[#C41A1A] bg-[#161618] pl-[14px]'
                   : 'hover:bg-[#111113]',
               ].join(' ')}
             >
               {isActivePara && sentences
-                ? sentences.map((sent, sIdx) => {
+                ? sentences.map((_sent, sIdx) => {
                     const isActiveSent = activeSentence === sIdx
                     const sentOffset = sentWordOffsets[sIdx]
-                    const wordSpans = isActiveSent ? buildWordSpans(sent) : null
+                    const wordSpans = allWordSpans[sIdx]
 
                     return (
                       <span
@@ -313,13 +356,14 @@ export default function ReaderView({ slug, chapter, prevChapter, nextChapter }: 
                             : 'hover:bg-[#111113] cursor-pointer',
                         ].join(' ')}
                       >
-                        {isActiveSent && wordSpans
-                          ? wordSpans.map((w, wi) => (
-                              <React.Fragment key={wi}>
-                                <span data-wi={sentOffset + wi}>{w.word}</span>{' '}
-                              </React.Fragment>
-                            ))
-                          : sent + ' '}
+                        {wordSpans.map((w, wi) => (
+                          <React.Fragment key={wi}>
+                            <span
+                              data-wi={sentOffset + wi}
+                              style={{ transition: 'background-color 0.12s, color 0.12s' }}
+                            >{w.word}</span>{' '}
+                          </React.Fragment>
+                        ))}
                       </span>
                     )
                   })

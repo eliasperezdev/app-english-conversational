@@ -34,7 +34,11 @@ export default async function ChapterPage({ params }: Props) {
 
   return (
     <>
-      <main className={`min-h-screen bg-[#0e0e0f] px-6 py-12 ${practiceRoute ? 'pb-32' : ''}`}>
+      <main
+        className={`min-h-screen bg-[#0e0e0f] px-6 py-12 ${practiceRoute ? 'pb-32' : ''}`}
+        data-notebook-source={`${badge} ${chapter.title}`}
+        data-notebook-level={levelSlug}
+      >
         <div className="max-w-3xl mx-auto">
 
           {/* Back */}

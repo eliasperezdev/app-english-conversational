@@ -7,8 +7,8 @@ import type { TextUIPart } from "ai"
 import { MessageBubble } from "@/components/message-bubble"
 import { VoiceControls } from "@/components/voice-controls"
 import { TtsPlayer } from "@/components/tts-player"
-import { ArrowLeft, Send } from "lucide-react"
-import Link from "next/link"
+import { Send } from "lucide-react"
+import { BackButton } from "@/components/ui/back-button"
 import { topics } from "@/lib/topics"
 import { levels } from "@/lib/levels"
 
@@ -123,17 +123,12 @@ export function ChatInterface({ mode, level, topic, prefill, onResetLevel }: Pro
     : null
 
   return (
-    <div className="flex flex-col h-dvh bg-[#0e0e0f] text-[#d0d0d5]">
+    <div className="flex flex-col flex-1 text-[#d0d0d5]">
       {/* Topbar */}
       <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618]">
         <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center gap-3">
-            <Link
-              href={backHref}
-              className="text-[#888] hover:text-[#d0d0d5] transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-            </Link>
+            <BackButton label={mode === "free" ? "Home" : "Practice"} href={backHref} />
             <span className="px-2.5 py-0.5 rounded-full bg-[#C41A1A] text-white text-xs md:text-sm font-semibold uppercase tracking-wide">
               {badgeLabel}
             </span>

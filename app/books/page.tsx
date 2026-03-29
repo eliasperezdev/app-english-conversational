@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { getAllBooksMetadata } from '@/lib/books'
+import PageWrapper from '@/components/ui/page-wrapper'
+import { BackButton } from '@/components/ui/back-button'
 
 function formatTime(minutes: number): string {
   if (minutes < 60) return `~${minutes} min`
@@ -10,32 +12,27 @@ export default async function BooksPage() {
   const books = await getAllBooksMetadata()
 
   return (
-    <main className="min-h-screen bg-[#0e0e0f] px-6 py-12">
-      <div className="max-w-4xl mx-auto">
+    <PageWrapper>
+      <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618] px-4 py-3">
+        <BackButton label="Home" href="/" />
+      </header>
 
-        {/* Back */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-[#888] text-sm hover:text-white transition-colors mb-10"
-        >
-          ← Home
-        </Link>
-
+      <div className="flex-1 px-6 py-10">
         {/* Header */}
         <div className="mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#C41A1A] mb-2">
             AI Language Tutor
           </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-3">
             Books
           </h1>
-          <p className="text-[#888] text-base max-w-lg">
+          <p className="text-[#888] text-base">
             Classic literature to expand your vocabulary and reading comprehension.
           </p>
         </div>
 
         {/* Book cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {books.map((book) => (
             <Link
               key={book.slug}
@@ -54,6 +51,6 @@ export default async function BooksPage() {
           ))}
         </div>
       </div>
-    </main>
+    </PageWrapper>
   )
 }

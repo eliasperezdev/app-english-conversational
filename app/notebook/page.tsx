@@ -9,6 +9,7 @@ import {
   getStats,
   type NotebookEntry,
 } from '@/lib/notebook'
+import { BackButton } from '@/components/ui/back-button'
 
 type SourceFilter = 'all' | 'guide' | 'book' | 'chat'
 type LevelFilter = 'all' | 'a1' | 'a2' | 'b1' | 'b2' | 'c1' | 'c2'
@@ -241,16 +242,12 @@ export default function NotebookPage() {
   ]
 
   return (
-    <main className="min-h-screen bg-[#0e0e0f] px-6 py-12">
-      <div className="max-w-2xl mx-auto">
+    <main className="max-w-[480px] mx-auto min-h-dvh flex flex-col">
+      <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618] px-4 py-3">
+        <BackButton label="Home" href="/" />
+      </header>
 
-        {/* Back */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-[#888] text-sm hover:text-white transition-colors mb-10"
-        >
-          ← Home
-        </Link>
+      <div className="flex-1 px-6 py-10">
 
         {/* Header */}
         <div className="mb-8">

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getAllBooksMetadata, getBook } from '@/lib/books'
+import PageWrapper from '@/components/ui/page-wrapper'
+import { BackButton } from '@/components/ui/back-button'
 
 export async function generateStaticParams() {
   const books = await getAllBooksMetadata()
@@ -22,23 +24,18 @@ export default async function BookPage({ params }: Props) {
   if (!book) notFound()
 
   return (
-    <main className="min-h-screen bg-[#0e0e0f] px-6 py-12">
-      <div className="max-w-3xl mx-auto">
+    <PageWrapper>
+      <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618] px-4 py-3">
+        <BackButton label="Books" href="/books" />
+      </header>
 
-        {/* Back */}
-        <Link
-          href="/books"
-          className="inline-flex items-center gap-1.5 text-[#888] text-sm hover:text-white transition-colors mb-10"
-        >
-          ← Books
-        </Link>
-
+      <div className="flex-1 px-6 py-10">
         {/* Header */}
         <div className="mb-10">
           <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-[#C41A1A] bg-[#C41A1A]/10 rounded-full px-3 py-1 mb-3">
             {book.level}
           </span>
-          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-2">
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">
             {book.title}
           </h1>
           <p className="text-[#888] text-base mb-4">{book.author}</p>
@@ -73,6 +70,6 @@ export default async function BookPage({ params }: Props) {
           ))}
         </div>
       </div>
-    </main>
+    </PageWrapper>
   )
 }

@@ -141,7 +141,7 @@ function ReviewSession() {
 
   if (deck.length === 0) {
     return (
-      <main className="min-h-screen bg-[#0e0e0f] flex items-center justify-center px-6">
+      <main className="max-w-[480px] mx-auto min-h-dvh flex items-center justify-center px-6">
         <div className="text-center">
           <p className="text-white font-bold text-xl mb-2">No words to review</p>
           <p className="text-[#555] text-sm mb-6">
@@ -163,7 +163,7 @@ function ReviewSession() {
   if (sessionState === 'complete') {
     const allEntries = getEntries()
     return (
-      <main className="min-h-screen bg-[#0e0e0f] flex items-center justify-center px-6">
+      <main className="max-w-[480px] mx-auto min-h-dvh flex items-center justify-center px-6">
         <div className="w-full max-w-md text-center">
           <p className="text-4xl mb-4">🎉</p>
           <h1 className="text-2xl font-bold text-white mb-2">Session complete!</h1>
@@ -193,7 +193,7 @@ function ReviewSession() {
   const progress = ((idx) / deck.length) * 100
 
   return (
-    <main className="min-h-screen bg-[#0e0e0f] px-6 py-12 flex flex-col items-center">
+    <main className="max-w-[480px] mx-auto min-h-dvh px-6 py-12 flex flex-col items-center">
       <div className="w-full max-w-lg">
 
         {/* Back + progress */}
@@ -303,7 +303,7 @@ function ReviewSession() {
 
 export default function ReviewPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-[#0e0e0f]" />}>
+    <Suspense fallback={<main className="max-w-[480px] mx-auto min-h-dvh" />}>
       <ReviewSession />
     </Suspense>
   )

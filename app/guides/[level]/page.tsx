@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getAllLevelSlugs, getLevel } from '@/lib/guides'
+import PageWrapper from '@/components/ui/page-wrapper'
+import { BackButton } from '@/components/ui/back-button'
 
 export function generateStaticParams() {
   return getAllLevelSlugs().map((level) => ({ level }))
@@ -18,30 +20,25 @@ export default async function LevelPage({ params }: Props) {
   const badge = levelSlug.toUpperCase()
 
   return (
-    <main className="min-h-screen bg-[#0e0e0f] px-6 py-12">
-      <div className="max-w-4xl mx-auto">
+    <PageWrapper>
+      <header className="shrink-0 border-b border-[#2a2a2e] bg-[#161618] px-4 py-3">
+        <BackButton label="Guides" href="/guides" />
+      </header>
 
-        {/* Back */}
-        <Link
-          href="/guides"
-          className="inline-flex items-center gap-1.5 text-[#888] text-sm hover:text-white transition-colors mb-10"
-        >
-          ← Guides
-        </Link>
-
+      <div className="flex-1 px-6 py-10">
         {/* Header */}
         <div className="mb-10">
           <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-[#C41A1A] bg-[#C41A1A]/10 rounded-full px-3 py-1 mb-3">
             {badge}
           </span>
-          <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-3">
             {level.label}
           </h1>
-          <p className="text-[#888] text-base max-w-xl">{level.description}</p>
+          <p className="text-[#888] text-base">{level.description}</p>
         </div>
 
         {/* Chapter cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {level.chapters.map((chapter) => {
             if (!chapter.available) {
               return (
@@ -81,6 +78,6 @@ export default async function LevelPage({ params }: Props) {
           })}
         </div>
       </div>
-    </main>
+    </PageWrapper>
   )
 }

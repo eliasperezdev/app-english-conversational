@@ -3,6 +3,7 @@
 import { use, useState, useEffect } from "react"
 import { ChatInterface } from "@/components/chat-interface"
 import { LevelSelector } from "@/components/level-selector"
+import PageWrapper from "@/components/ui/page-wrapper"
 
 interface Props {
   searchParams: Promise<{ prefill?: string }>
@@ -33,16 +34,22 @@ export default function ChatPage({ searchParams }: Props) {
   if (level === undefined) return null
 
   if (level === null) {
-    return <LevelSelector onSelect={handleLevelSelect} />
+    return (
+      <PageWrapper>
+        <LevelSelector onSelect={handleLevelSelect} />
+      </PageWrapper>
+    )
   }
 
   return (
-    <ChatInterface
-      key={chatKey}
-      mode="free"
-      level={level}
-      prefill={prefill}
-      onResetLevel={handleResetLevel}
-    />
+    <PageWrapper>
+      <ChatInterface
+        key={chatKey}
+        mode="free"
+        level={level}
+        prefill={prefill}
+        onResetLevel={handleResetLevel}
+      />
+    </PageWrapper>
   )
 }

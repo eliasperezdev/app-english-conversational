@@ -38,7 +38,7 @@ export default async function ChapterPage({ params }: Props) {
 
   return (
     <div
-      className="min-h-screen bg-[#0e0e0f]"
+      className="max-w-[480px] mx-auto min-h-dvh flex flex-col"
       data-notebook-source={`${book.title}, Ch.${number}`}
       data-notebook-level={book.level}
     >
@@ -48,6 +48,7 @@ export default async function ChapterPage({ params }: Props) {
         prevChapter={prevChapter}
         nextChapter={nextChapter}
         totalChapters={book.totalChapters}
+        bookTitle={book.title}
       />
       <Link
         href={`/chat?prefill=${prefill}`}
